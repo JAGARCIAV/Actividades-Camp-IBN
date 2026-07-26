@@ -79,6 +79,7 @@ function configurarFormActividad() {
     const puntos = parseInt(document.getElementById('inputActividadPuntos').value, 10) || 0;
     await DataService.setActividad({ nombre, puntos });
     mostrarAviso('avisoActividad');
+    await renderParticipantes();
   });
 
   document.getElementById('btnOtorgarATodos').addEventListener('click', async () => {
@@ -156,6 +157,7 @@ function crearFotoElemento(participante) {
 
 async function renderParticipantes() {
   const participantes = await DataService.getParticipantes();
+  const actividad = await DataService.getActividad();
   const lista = document.getElementById('listaParticipantesAdmin');
   const vacio = document.getElementById('listaAdminVacia');
 
@@ -196,6 +198,9 @@ async function renderParticipantes() {
           <span>${participante.puntos} pts</span>
           <button type="button" data-accion="sumar" title="Sumar 5 puntos">+</button>
         </div>
+        <button type="button" class="btn btn-oro btn-sm" data-accion="cumplio" title="Dar los puntos de la actividad actual a este participante">
+          ✅ Cumplió (+${actividad.puntos})
+        </button>
         <input type="file" class="input-foto" accept="image/*" title="Cambiar foto" />
         <button type="button" class="btn btn-peligro btn-sm" data-accion="eliminar">Eliminar</button>
       `;
@@ -219,6 +224,12 @@ async function renderParticipantes() {
 
       acciones.querySelector('[data-accion="restar"]').addEventListener('click', async () => {
         await DataService.addPuntos(participante.id, -5);
+        await renderParticipantes();
+      });
+
+      acciones.querySelector('[data-accion="cumplio"]').addEventListener('click', async () => {
+        const actividadActual = await DataService.getActividad();
+        await DataService.addPuntos(participante.id, actividadActual.puntos);
         await renderParticipantes();
       });
 
