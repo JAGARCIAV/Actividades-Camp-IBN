@@ -82,8 +82,10 @@ progreso = puntos_del_participante / CONFIG.META_PUNTOS
 ```
 
 `CONFIG.META_PUNTOS` (en `js/app.js`) es el puntaje necesario para llegar
-al campamento (100 por defecto). Si tu campamento maneja otro rango de
-puntos, solo cambia ese número.
+al campamento (5000 por defecto). Al llegar a esa meta, el participante
+queda marcado visualmente como **ganador** (brillo dorado + 🏆 en su pin y
+en el ranking). Si tu campamento maneja otro rango de puntos, solo cambia
+ese número.
 
 Si el mapa cambia en el futuro, solo hay que ajustar los puntos de
 `PATH_POINTS` para que sigan la nueva forma del camino; el resto del

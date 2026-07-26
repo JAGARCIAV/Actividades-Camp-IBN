@@ -38,7 +38,7 @@ const PATH_POINTS = [
 
 /** Puntos necesarios para llegar completamente al campamento (100% del camino). */
 const CONFIG = {
-  META_PUNTOS: 100,
+  META_PUNTOS: 5000,
 };
 
 /** Convierte un punto {x,y} en % a coordenadas de píxel reales de la imagen. */
@@ -105,8 +105,8 @@ function puntoYTangenteEnCamino(progreso) {
  *   pelear por espacio, sus nombres van parpadeando por turnos (ver
  *   CSS: .avatar-nombre--parpadeo).
  */
-const SEPARACION_MINIMA_PX = 28;
-const SEPARACION_PAR_PX = 84;
+const SEPARACION_MINIMA_PX = 36;
+const SEPARACION_PAR_PX = 109;
 
 /**
  * Calcula la posición final en % de TODOS los participantes a la vez,
@@ -146,7 +146,7 @@ function calcularPosicionesSinSolape(participantes) {
 
   // Margen de seguridad para que ningún avatar quede tapado por el
   // borde de la imagen o le "corten los pies".
-  const MARGEN_BORDE_PX = 18;
+  const MARGEN_BORDE_PX = 23;
 
   function ubicarRacimo(racimo) {
     const n = racimo.length;
@@ -414,6 +414,10 @@ async function renderMapa() {
       nombreSpan.style.animationDelay = '';
     }
 
+    // Al llegar a la meta (CONFIG.META_PUNTOS), el pin se marca como
+    // "ganador" con un brillo dorado y un trofeo.
+    el.classList.toggle('avatar-participante--ganador', participante.puntos >= CONFIG.META_PUNTOS);
+
     el.style.left = `${pos.x}%`;
     el.style.top = `${pos.y}%`;
 
@@ -448,8 +452,9 @@ async function renderRanking() {
   lista.innerHTML = '';
   ordenados.forEach((participante, index) => {
     const posicion = index + 1;
+    const esGanador = participante.puntos >= CONFIG.META_PUNTOS;
     const li = document.createElement('li');
-    li.className = `ranking-item${posicion <= 3 ? ` ranking-item--${posicion}` : ''}`;
+    li.className = `ranking-item${posicion <= 3 ? ` ranking-item--${posicion}` : ''}${esGanador ? ' ranking-item--ganador' : ''}`;
 
     const posicionSpan = document.createElement('span');
     posicionSpan.className = 'ranking-posicion';
@@ -469,7 +474,7 @@ async function renderRanking() {
 
     const puntosSpan = document.createElement('span');
     puntosSpan.className = 'ranking-puntos';
-    puntosSpan.textContent = `${participante.puntos} pts`;
+    puntosSpan.textContent = esGanador ? `🏆 ${participante.puntos} pts` : `${participante.puntos} pts`;
 
     li.append(posicionSpan, wrap, info, puntosSpan);
     lista.appendChild(li);

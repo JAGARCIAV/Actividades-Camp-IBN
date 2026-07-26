@@ -253,8 +253,8 @@ button {
    matemática en el comentario de más abajo). */
 .avatar-pin-holder {
   position: relative;
-  width: 24px;
-  height: 24px;
+  width: 31px;
+  height: 31px;
   animation: flotar 2.6s ease-in-out infinite;
 }
 
@@ -266,8 +266,8 @@ button {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 17px;
-  height: 17px;
+  width: 22px;
+  height: 22px;
   transform: translate(-50%, -50%) rotate(-45deg);
   border-radius: 50% 50% 50% 0;
   background: var(--avatar-color, var(--verde-500));
@@ -280,8 +280,8 @@ button {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 11px;
-  height: 11px;
+  width: 14px;
+  height: 14px;
   transform: translate(-50%, -50%) rotate(45deg);
   border-radius: 50%;
   overflow: hidden;
@@ -386,6 +386,39 @@ button {
 }
 
 /* --------------------------------------------------------------------------
+   GANADOR: participante que llegó a la meta (CONFIG.META_PUNTOS)
+   -------------------------------------------------------------------------- */
+
+.avatar-participante--ganador .avatar-pin {
+  box-shadow: 0 0 0 3px var(--acento-oro), 0 4px 14px rgba(0, 0, 0, 0.4);
+  animation: brilloGanador 1.6s ease-in-out infinite;
+}
+
+.avatar-participante--ganador .avatar-pin-holder {
+  animation: flotar 2.6s ease-in-out infinite, brilloGanadorEscala 1.6s ease-in-out infinite;
+}
+
+.avatar-participante--ganador::before {
+  content: "🏆";
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1rem;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35));
+}
+
+@keyframes brilloGanador {
+  0%, 100% { box-shadow: 0 0 0 3px var(--acento-oro), 0 4px 14px rgba(0, 0, 0, 0.4); }
+  50% { box-shadow: 0 0 0 6px var(--acento-oro), 0 4px 18px rgba(0, 0, 0, 0.45); }
+}
+
+@keyframes brilloGanadorEscala {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* --------------------------------------------------------------------------
    RANKING
    -------------------------------------------------------------------------- */
 
@@ -441,6 +474,14 @@ button {
 
 .ranking-item--3 {
   border-color: #e3b587;
+}
+
+/* Quien llega a la meta (CONFIG.META_PUNTOS) se resalta como ganador,
+   sin importar en qué posición del ranking esté. */
+.ranking-item--ganador {
+  border-color: var(--acento-oro);
+  background: linear-gradient(90deg, #fff4d6, #ffffff);
+  box-shadow: 0 0 0 2px var(--acento-oro), var(--sombra-suave);
 }
 
 .ranking-posicion {
