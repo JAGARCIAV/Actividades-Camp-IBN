@@ -96,10 +96,17 @@ function puntoYTangenteEnCamino(progreso) {
 }
 
 /**
- * Separación mínima (en píxeles) que debe haber entre dos avatares para
- * que no se vean pegados ni encimados sobre el camino.
+ * Separación (en píxeles) entre avatares que caen en el mismo punto del
+ * camino. Se usan dos valores distintos a propósito:
+ * - Si son solo 2, se separan lo suficiente para que ambos nombres se
+ *   lean sin encimarse (SEPARACION_PAR_PX).
+ * - Si son 3 o más, ya no caben todos los nombres uno al lado del otro,
+ *   así que se dejan bien juntitos (SEPARACION_MINIMA_PX) y en vez de
+ *   pelear por espacio, sus nombres van parpadeando por turnos (ver
+ *   CSS: .avatar-nombre--parpadeo).
  */
 const SEPARACION_MINIMA_PX = 28;
+const SEPARACION_PAR_PX = 84;
 
 /**
  * Calcula la posición final en % de TODOS los participantes a la vez,
@@ -112,11 +119,17 @@ const SEPARACION_MINIMA_PX = 28;
  * 2) Se ordenan por progreso (equivale a ordenarlos por su posición a
  *    lo largo del camino) y se agrupan en "racimos" los que quedan más
  *    cerca que SEPARACION_MINIMA_PX entre sí.
- * 3) Cada racimo se reacomoda en una pequeña cuadrícula, centrada en el
- *    punto ideal del grupo, usando como ejes la dirección del camino
- *    (tangente) y su perpendicular. Así, sin importar cuántos
- *    participantes compartan el mismo puntaje, quedan repartidos en un
- *    grupito compacto en ese punto del camino, nunca uno encima de otro.
+ * 3) Cada racimo se abre en UNA SOLA fila horizontal (perpendicular a
+ *    la dirección del camino en ese punto), centrada en el punto ideal
+ *    del grupo. Así, sin importar cuántos participantes compartan el
+ *    mismo puntaje, quedan parados en línea en ese punto del camino,
+ *    nunca uno encima de otro ni uno más adelantado que otro.
+ *
+ * Devuelve { posiciones, racimos }:
+ * - posiciones: Map id -> {x%, y%}
+ * - racimos: Map id -> {tamano, indice} (tamano = cuántos comparten ese
+ *   punto; indice = su lugar en la fila). Sirve para decidir en el
+ *   render si el nombre de ese participante debe parpadear.
  */
 function calcularPosicionesSinSolape(participantes) {
   const base = participantes.map((participante) => {
@@ -129,6 +142,7 @@ function calcularPosicionesSinSolape(participantes) {
   base.sort((a, b) => b.progreso - a.progreso);
 
   const resultados = [];
+  const racimos = new Map();
 
   // Margen de seguridad para que ningún avatar quede tapado por el
   // borde de la imagen o le "corten los pies".
@@ -138,27 +152,23 @@ function calcularPosicionesSinSolape(participantes) {
     const n = racimo.length;
     const anclaX = racimo.reduce((s, p) => s + p.x, 0) / n;
     const anclaY = racimo.reduce((s, p) => s + p.y, 0) / n;
-    // Perpendicular al camino en ese punto (para abrir el racimo "de lado").
+    // Perpendicular al camino en ese punto (para abrir la fila "de lado").
     const { tx, ty } = racimo[0];
     const perpX = -ty;
     const perpY = tx;
-
-    const columnas = Math.ceil(Math.sqrt(n));
-    const filas = Math.ceil(n / columnas);
+    const espaciado = n === 2 ? SEPARACION_PAR_PX : SEPARACION_MINIMA_PX;
 
     const puntosRacimo = racimo.map((p, i) => {
-      const col = i % columnas;
-      const fila = Math.floor(i / columnas);
-      const offsetPerp = (col - (columnas - 1) / 2) * SEPARACION_MINIMA_PX;
-      const offsetTangente = (fila - (filas - 1) / 2) * SEPARACION_MINIMA_PX;
+      const offsetPerp = (i - (n - 1) / 2) * espaciado;
+      racimos.set(p.participante.id, { tamano: n, indice: i });
       return {
         id: p.participante.id,
-        x: anclaX + perpX * offsetPerp + tx * offsetTangente,
-        y: anclaY + perpY * offsetPerp + ty * offsetTangente,
+        x: anclaX + perpX * offsetPerp,
+        y: anclaY + perpY * offsetPerp,
       };
     });
 
-    // Si el racimo completo se acerca al borde de la imagen, se desplaza
+    // Si la fila completa se acerca al borde de la imagen, se desplaza
     // COMO GRUPO (nunca punto por punto) para no perder la separación
     // que ya se calculó entre sus avatares.
     const minX = Math.min(...puntosRacimo.map((p) => p.x));
@@ -195,11 +205,11 @@ function calcularPosicionesSinSolape(participantes) {
   if (racimoActual.length) ubicarRacimo(racimoActual);
 
   // Convertir de píxeles a % y devolver un mapa id -> {x%, y%} listo para usar.
-  const mapaPosiciones = new Map();
+  const posiciones = new Map();
   resultados.forEach(({ id, x, y }) => {
-    mapaPosiciones.set(id, { x: (x / MAPA_TAMANO.ancho) * 100, y: (y / MAPA_TAMANO.alto) * 100 });
+    posiciones.set(id, { x: (x / MAPA_TAMANO.ancho) * 100, y: (y / MAPA_TAMANO.alto) * 100 });
   });
-  return mapaPosiciones;
+  return { posiciones, racimos };
 }
 
 /* --------------------------------------------------------------------
@@ -213,6 +223,20 @@ function obtenerIniciales(nombre) {
     .slice(0, 2)
     .map((p) => p[0].toUpperCase())
     .join('');
+}
+
+/**
+ * Nombre "corto" para mostrar en público: primer nombre + inicial del
+ * último apellido (ej. "Andrea Gómez López" -> "Andrea L."). El nombre
+ * completo se sigue guardando tal cual en los datos; esto es solo para
+ * la vista pública (mapa y ranking).
+ */
+function nombreCorto(nombreCompleto) {
+  const partes = nombreCompleto.trim().split(/\s+/).filter(Boolean);
+  if (partes.length <= 1) return partes[0] || '';
+  const nombre = partes[0];
+  const inicial = partes[partes.length - 1][0].toUpperCase();
+  return `${nombre} ${inicial}.`;
 }
 
 /** Crea el <img>/iniciales de un avatar con fallback si la foto no carga o no existe. */
@@ -252,6 +276,10 @@ async function renderActividad() {
 // aumentos y disparar la animación de "boost" al llegar a su nueva posición.
 const ultimosPuntos = new Map();
 
+// Cuántos segundos permanece cada nombre "en pantalla" dentro del ciclo
+// de parpadeo cuando 3 o más participantes comparten el mismo punto.
+const TIEMPO_PARPADEO_POR_NOMBRE = 1.4;
+
 async function renderMapa() {
   const participantes = await DataService.getParticipantes();
   const capa = document.getElementById('capaParticipantes');
@@ -266,8 +294,8 @@ async function renderMapa() {
   });
 
   // Se calculan todas las posiciones juntas (no una por una) porque el
-  // anti-solape necesita ver el conjunto completo para armar los racimos.
-  const posiciones = calcularPosicionesSinSolape(participantes);
+  // anti-solape necesita ver el conjunto completo para armar las filas.
+  const { posiciones, racimos } = calcularPosicionesSinSolape(participantes);
 
   participantes.forEach((participante) => {
     const pos = posiciones.get(participante.id);
@@ -297,7 +325,7 @@ async function renderMapa() {
 
       const nombreSpan = document.createElement('span');
       nombreSpan.className = 'avatar-nombre';
-      nombreSpan.textContent = participante.nombre;
+      nombreSpan.textContent = nombreCorto(participante.nombre);
 
       const puntosSpan = document.createElement('span');
       puntosSpan.className = 'avatar-puntos';
@@ -306,7 +334,7 @@ async function renderMapa() {
       el.append(holder, nombreSpan, puntosSpan);
       capa.appendChild(el);
     } else {
-      el.querySelector('.avatar-nombre').textContent = participante.nombre;
+      el.querySelector('.avatar-nombre').textContent = nombreCorto(participante.nombre);
       el.querySelector('.avatar-puntos').textContent = `${participante.puntos} pts`;
       el.querySelector('.avatar-pin').style.setProperty('--avatar-color', participante.color);
       const fotoWrap = el.querySelector('.avatar-pin-foto-wrap');
@@ -315,6 +343,23 @@ async function renderMapa() {
         fotoWrap.innerHTML = '';
         fotoWrap.appendChild(crearFotoElemento(participante, 'avatar-foto', 'avatar-iniciales'));
       }
+    }
+
+    // Si 3 o más participantes coinciden en el mismo punto del camino,
+    // sus nombres no caben uno al lado del otro: en vez de eso, cada
+    // uno "parpadea" (aparece por turnos) para que se alcancen a leer
+    // todos sin amontonarse.
+    const infoRacimo = racimos.get(participante.id);
+    const nombreSpan = el.querySelector('.avatar-nombre');
+    if (infoRacimo && infoRacimo.tamano >= 3) {
+      const duracion = infoRacimo.tamano * TIEMPO_PARPADEO_POR_NOMBRE;
+      nombreSpan.classList.add('avatar-nombre--parpadeo');
+      nombreSpan.style.animationDuration = `${duracion}s`;
+      nombreSpan.style.animationDelay = `-${infoRacimo.indice * TIEMPO_PARPADEO_POR_NOMBRE}s`;
+    } else {
+      nombreSpan.classList.remove('avatar-nombre--parpadeo');
+      nombreSpan.style.animationDuration = '';
+      nombreSpan.style.animationDelay = '';
     }
 
     el.style.left = `${pos.x}%`;
@@ -367,7 +412,7 @@ async function renderRanking() {
     info.className = 'ranking-info';
     const nombreDiv = document.createElement('div');
     nombreDiv.className = 'ranking-nombre';
-    nombreDiv.textContent = participante.nombre;
+    nombreDiv.textContent = nombreCorto(participante.nombre);
     info.appendChild(nombreDiv);
 
     const puntosSpan = document.createElement('span');

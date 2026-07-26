@@ -298,9 +298,26 @@ button {
   padding: 1px 6px;
   border-radius: 999px;
   white-space: nowrap;
-  max-width: 74px;
+  max-width: 60px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Cuando 3 o más participantes coinciden en el mismo punto del camino,
+   sus nombres no caben todos a la vez: cada uno aparece por turnos
+   (ver duración/retraso calculados en JS según cuántos son). */
+.avatar-nombre--parpadeo {
+  animation-name: parpadeoNombre;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes parpadeoNombre {
+  0% { opacity: 0; }
+  4% { opacity: 1; }
+  16% { opacity: 1; }
+  20% { opacity: 0; }
+  100% { opacity: 0; }
 }
 
 .avatar-puntos {
