@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Actividades Camp 2027</title>
+  <meta name="description" content="Camino hacia el campamento: progreso y ranking de participantes." />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="app-header">
+    <div class="app-header__top">
+      <div class="logo-wrap">
+        <div class="logo-badge">🏕️</div>
+        <img id="logoImg" class="logo-img" alt="Logo del campamento" />
+      </div>
+      <div>
+        <h1 class="app-title">ACTIVIDADES CAMP 2027</h1>
+        <p class="app-subtitle">Camino al campamento</p>
+      </div>
+    </div>
+
+    <div class="actividad-card">
+      <div class="actividad-card__info">
+        <span class="actividad-card__label">Actividad actual</span>
+        <span class="actividad-card__nombre" id="actividadNombre">Cargando...</span>
+      </div>
+      <span class="actividad-card__puntos" id="actividadPuntos">Vale 0 puntos</span>
+    </div>
+  </header>
+
+  <div class="contenido-principal">
+    <!-- ===================== MAPA ===================== -->
+    <section class="mapa-section" aria-label="Mapa de progreso">
+      <div class="mapa-wrapper" id="mapaWrapper">
+        <img class="mapa-imagen" src="assets/mapa.png" alt="Mapa del camino hacia el campamento" />
+        <div class="mapa-capa-participantes" id="capaParticipantes"></div>
+      </div>
+    </section>
+
+    <!-- ===================== RANKING ===================== -->
+    <section class="ranking-section" aria-label="Ranking de participantes">
+      <h2 class="ranking-titulo">🏆 Ranking</h2>
+      <ul class="ranking-lista" id="rankingLista"></ul>
+      <p class="estado-vacio" id="rankingVacio" style="display:none;">
+        Todavía no hay participantes registrados.
+      </p>
+    </section>
+  </div>
+
+  <!-- Acceso discreto al panel administrador -->
+  <a class="admin-link" href="admin.html" title="Acceso administrador" aria-label="Acceso administrador">⚙️</a>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

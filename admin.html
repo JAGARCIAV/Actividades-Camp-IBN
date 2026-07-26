@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Admin · Actividades Camp 2027</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+<body>
+
+  <!-- ===================== LOGIN ===================== -->
+  <section id="vistaLogin" class="login-pantalla">
+    <div class="login-tarjeta">
+      <div class="login-icono">🔒</div>
+      <h1>Panel Administrador</h1>
+      <p>Actividades Camp 2027</p>
+
+      <form id="formLogin" novalidate>
+        <div class="campo">
+          <label for="inputUsuario">Usuario</label>
+          <input id="inputUsuario" type="text" autocomplete="username" required />
+        </div>
+        <div class="campo">
+          <label for="inputClave">Contraseña</label>
+          <input id="inputClave" type="password" autocomplete="current-password" required />
+        </div>
+        <button type="submit" class="btn btn-primario">Entrar</button>
+        <p class="login-error" id="loginError"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===================== PANEL ===================== -->
+  <section id="vistaPanel" class="oculto">
+    <header class="panel-header">
+      <h1>🏕️ Panel Administrador</h1>
+      <div style="display:flex; gap:16px; align-items:center;">
+        <a href="index.html">Ver página pública</a>
+        <button id="btnLogout" class="btn btn-secundario btn-sm">Cerrar sesión</button>
+      </div>
+    </header>
+
+    <div class="panel-contenido">
+
+      <!-- ACTIVIDAD ACTUAL -->
+      <div class="panel-tarjeta">
+        <h2>🎯 Actividad actual</h2>
+        <form id="formActividad">
+          <div class="fila">
+            <div class="campo">
+              <label for="inputActividadNombre">Nombre de la actividad</label>
+              <input id="inputActividadNombre" type="text" required />
+            </div>
+            <div class="campo">
+              <label for="inputActividadPuntos">Puntos que vale</label>
+              <input id="inputActividadPuntos" type="number" min="0" required />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primario">Guardar actividad</button>
+          <span class="aviso-guardado" id="avisoActividad">Guardado ✓</span>
+        </form>
+        <div style="margin-top:12px;">
+          <button type="button" id="btnOtorgarATodos" class="btn btn-oro btn-sm">
+            🎁 Dar estos puntos a todos los participantes
+          </button>
+        </div>
+      </div>
+
+      <!-- AGREGAR PARTICIPANTE -->
+      <div class="panel-tarjeta">
+        <h2>➕ Agregar participante</h2>
+        <form id="formNuevoParticipante">
+          <div class="fila">
+            <div class="campo">
+              <label for="inputNuevoNombre">Nombre</label>
+              <input id="inputNuevoNombre" type="text" required />
+            </div>
+            <div class="campo">
+              <label for="inputNuevoPuntos">Puntos iniciales</label>
+              <input id="inputNuevoPuntos" type="number" min="0" value="0" />
+            </div>
+            <div class="campo">
+              <label for="inputNuevoFoto">Fotografía</label>
+              <input id="inputNuevoFoto" type="file" accept="image/*" />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primario">Agregar</button>
+        </form>
+      </div>
+
+      <!-- LISTA DE PARTICIPANTES -->
+      <div class="panel-tarjeta">
+        <h2>🧑‍🤝‍🧑 Participantes</h2>
+        <ul class="participantes-admin-lista" id="listaParticipantesAdmin"></ul>
+        <p class="lista-vacia-admin" id="listaAdminVacia" style="display:none;">
+          Todavía no hay participantes. Agrega el primero arriba.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

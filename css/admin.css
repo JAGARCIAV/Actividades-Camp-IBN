@@ -1,0 +1,346 @@
+/* ==========================================================================
+   admin.css — Panel administrador de Actividades Camp 2027
+   Reutiliza la paleta de style.css (variables :root definidas ahí).
+   ========================================================================== */
+
+body {
+  min-height: 100vh;
+}
+
+.oculto {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   LOGIN
+   -------------------------------------------------------------------------- */
+
+.login-pantalla {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: radial-gradient(circle at 50% 0%, var(--verde-500), var(--verde-900) 75%);
+}
+
+.login-tarjeta {
+  width: 100%;
+  max-width: 360px;
+  background: var(--tarjeta-bg);
+  border-radius: var(--radio-xl);
+  box-shadow: var(--sombra-fuerte);
+  padding: 32px 26px;
+  text-align: center;
+}
+
+.login-icono {
+  font-size: 2.6rem;
+  margin-bottom: 6px;
+}
+
+.login-tarjeta h1 {
+  font-size: 1.3rem;
+  margin: 0 0 4px;
+  color: var(--verde-900);
+}
+
+.login-tarjeta p {
+  margin: 0 0 20px;
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.campo {
+  text-align: left;
+  margin-bottom: 14px;
+}
+
+.campo label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--verde-900);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.campo input,
+.campo select {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: var(--radio-md);
+  border: 2px solid #e0e8e3;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease;
+}
+
+.campo input:focus,
+.campo select:focus {
+  outline: none;
+  border-color: var(--verde-500);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.9rem;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+}
+
+.btn-primario {
+  background: var(--verde-600);
+  color: #fff;
+  width: 100%;
+}
+
+.btn-primario:hover {
+  filter: brightness(1.06);
+}
+
+.btn-secundario {
+  background: #eef3f0;
+  color: var(--verde-900);
+}
+
+.btn-peligro {
+  background: #ff5c5c;
+  color: #fff;
+}
+
+.btn-oro {
+  background: var(--acento-oro);
+  color: var(--verde-900);
+}
+
+.btn-sm {
+  padding: 7px 12px;
+  font-size: 0.78rem;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.15);
+}
+
+.login-error {
+  color: #e0332b;
+  font-size: 0.82rem;
+  font-weight: 700;
+  min-height: 18px;
+  margin: 10px 0 0;
+}
+
+/* --------------------------------------------------------------------------
+   PANEL — ESTRUCTURA GENERAL
+   -------------------------------------------------------------------------- */
+
+.panel-header {
+  background: linear-gradient(135deg, var(--verde-700), var(--verde-600));
+  color: #fff;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 0 0 var(--radio-xl) var(--radio-xl);
+  box-shadow: var(--sombra-fuerte);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.panel-header h1 {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.panel-header a {
+  color: #fff;
+  opacity: 0.9;
+  font-size: 0.8rem;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.panel-contenido {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 18px 14px 50px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.panel-tarjeta {
+  background: var(--tarjeta-bg);
+  border-radius: var(--radio-lg);
+  box-shadow: var(--sombra-suave);
+  padding: 18px;
+}
+
+.panel-tarjeta h2 {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+  color: var(--verde-900);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fila {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fila .campo {
+  flex: 1;
+  min-width: 140px;
+}
+
+.aviso-guardado {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--verde-700);
+  margin-left: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.aviso-guardado.visible {
+  opacity: 1;
+}
+
+/* --------------------------------------------------------------------------
+   LISTA DE PARTICIPANTES (ADMIN)
+   -------------------------------------------------------------------------- */
+
+.participantes-admin-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.participante-admin-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px 14px;
+  align-items: center;
+  border: 2px solid #eef3f0;
+  border-radius: var(--radio-lg);
+  padding: 12px;
+}
+
+.participante-admin-foto-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  padding: 2px;
+  grid-row: span 2;
+}
+
+.participante-admin-foto,
+.participante-admin-iniciales {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+}
+
+.participante-admin-iniciales {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+}
+
+.participante-admin-nombre {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.participante-admin-nombre input {
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-weight: 700;
+  font-size: 0.95rem;
+  width: 100%;
+  padding: 2px 0;
+  background: transparent;
+}
+
+.participante-admin-nombre input:focus {
+  outline: none;
+  border-bottom-color: var(--verde-500);
+}
+
+.participante-admin-acciones {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.puntos-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f3f8f4;
+  border-radius: 999px;
+  padding: 4px 6px;
+}
+
+.puntos-control button {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  font-weight: 800;
+  background: var(--verde-500);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.puntos-control span {
+  min-width: 44px;
+  text-align: center;
+  font-weight: 800;
+  color: var(--verde-900);
+}
+
+.input-foto {
+  font-size: 0.75rem;
+  max-width: 140px;
+}
+
+.lista-vacia-admin {
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 10px;
+}
+
+@media (min-width: 700px) {
+  .participante-admin-item {
+    grid-template-columns: auto 1fr auto auto;
+  }
+  .participante-admin-acciones {
+    grid-column: auto;
+  }
+}

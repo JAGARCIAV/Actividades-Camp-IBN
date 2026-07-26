@@ -1,0 +1,14 @@
+{
+  "actividad": {
+    "nombre": "Traer una visita",
+    "puntos": 20
+  },
+  "participantes": [
+    { "id": "p1", "nombre": "Andrea Gómez",  "foto": "assets/avatars/p1.jpg", "puntos": 85, "color": "#FF6B6B" },
+    { "id": "p2", "nombre": "Carlos Ruiz",   "foto": "assets/avatars/p2.jpg", "puntos": 62, "color": "#4D96FF" },
+    { "id": "p3", "nombre": "Valeria Pérez", "foto": "assets/avatars/p3.jpg", "puntos": 47, "color": "#FFB84D" },
+    { "id": "p4", "nombre": "Josué Martín",  "foto": "assets/avatars/p4.jpg", "puntos": 30, "color": "#9B5DE5" },
+    { "id": "p5", "nombre": "Daniela Cruz",  "foto": "assets/avatars/p5.jpg", "puntos": 12, "color": "#00C2A8" },
+    { "id": "p6", "nombre": "Emmanuel Soto", "foto": "assets/avatars/p6.jpg", "puntos": 0,  "color": "#F15BB5" }
+  ]
+}

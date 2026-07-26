@@ -1,0 +1,544 @@
+/* ==========================================================================
+   style.css — Estilos públicos de Actividades Camp 2027
+   Mobile-first. Sin frameworks externos. Paleta tipo videojuego / naturaleza.
+   ========================================================================== */
+
+:root {
+  /* Paleta principal (vivos, con mucho verde) */
+  --verde-900: #0b3d24;
+  --verde-700: #12793f;
+  --verde-600: #16a34a;
+  --verde-500: #22c55e;
+  --verde-400: #4ade80;
+  --verde-glow: #7bffb0;
+
+  --acento-oro: #ffc93c;
+  --acento-naranja: #ff8a3d;
+  --acento-azul: #4d96ff;
+  --acento-rosa: #f15bb5;
+
+  --fondo-cielo: #eafff3;
+  --tarjeta-bg: #ffffff;
+  --texto-oscuro: #0d2b1c;
+  --texto-suave: #4b6b5a;
+
+  --radio-xl: 28px;
+  --radio-lg: 20px;
+  --radio-md: 14px;
+  --radio-sm: 8px;
+
+  --sombra-suave: 0 8px 24px rgba(11, 61, 36, 0.16);
+  --sombra-fuerte: 0 14px 34px rgba(11, 61, 36, 0.28);
+
+  --fuente-juego: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--fuente-juego);
+  background: linear-gradient(180deg, var(--fondo-cielo) 0%, #ffffff 55%);
+  color: var(--texto-oscuro);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   HEADER
+   -------------------------------------------------------------------------- */
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: linear-gradient(135deg, var(--verde-700), var(--verde-600));
+  color: #fff;
+  padding: 14px 16px 20px;
+  border-radius: 0 0 var(--radio-xl) var(--radio-xl);
+  box-shadow: var(--sombra-fuerte);
+}
+
+.app-header__top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-wrap {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+}
+
+.logo-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, var(--verde-400), var(--verde-700));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.logo-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  display: none;
+}
+
+.app-title {
+  margin: 0;
+  font-size: clamp(1.1rem, 4.5vw, 1.6rem);
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.18);
+  line-height: 1.1;
+}
+
+.app-subtitle {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.85;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.actividad-card {
+  margin-top: 14px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--radio-lg);
+  padding: 10px 16px;
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.actividad-card__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.actividad-card__label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  opacity: 0.8;
+  font-weight: 700;
+}
+
+.actividad-card__nombre {
+  font-size: 1.05rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actividad-card__puntos {
+  flex-shrink: 0;
+  background: var(--acento-oro);
+  color: var(--verde-900);
+  font-weight: 800;
+  font-size: 0.95rem;
+  padding: 8px 14px;
+  border-radius: 999px;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   MAPA
+   -------------------------------------------------------------------------- */
+
+.mapa-section {
+  padding: 18px 12px 6px;
+}
+
+.mapa-wrapper {
+  position: relative;
+  max-width: 620px;
+  margin: 0 auto;
+  border-radius: var(--radio-xl);
+  overflow: hidden;
+  box-shadow: var(--sombra-fuerte);
+  border: 4px solid #fff;
+}
+
+.mapa-imagen {
+  width: 100%;
+  height: auto;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Capa donde se posicionan los participantes, calcada sobre la imagen */
+.mapa-capa-participantes {
+  position: absolute;
+  inset: 0;
+}
+
+/* --------------------------------------------------------------------------
+   AVATAR DE PARTICIPANTE (sobre el mapa)
+   -------------------------------------------------------------------------- */
+
+.avatar-participante {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: left 1.4s cubic-bezier(0.34, 1.2, 0.4, 1), top 1.4s cubic-bezier(0.34, 1.2, 0.4, 1);
+  z-index: 5;
+  animation: aparecer 0.5s ease both;
+}
+
+.avatar-foto-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  padding: 3px;
+  background: var(--avatar-color, var(--verde-500));
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3), 0 0 0 3px rgba(255, 255, 255, 0.9);
+  animation: flotar 2.6s ease-in-out infinite;
+}
+
+.avatar-foto {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #fff;
+  border: 2px solid #fff;
+}
+
+.avatar-iniciales {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: var(--avatar-color, var(--verde-500));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.avatar-nombre {
+  font-size: 0.62rem;
+  font-weight: 700;
+  background: rgba(13, 43, 28, 0.85);
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.avatar-puntos {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: var(--verde-900);
+  background: var(--acento-oro);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+/* Efecto al recibir puntos / avanzar */
+.avatar-participante.avatar-boost .avatar-foto-wrap {
+  animation: boost 0.9s ease;
+}
+
+.avatar-participante.avatar-boost::after {
+  content: "✨";
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.1rem;
+  animation: chispa 0.9s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes flotar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes boost {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.35); }
+  60% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+@keyframes chispa {
+  0% { opacity: 0; transform: translate(-50%, 6px) scale(0.6); }
+  40% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -18px) scale(1.2); }
+}
+
+@keyframes aparecer {
+  from { opacity: 0; transform: translate(-50%, -100%) scale(0.6); }
+  to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+}
+
+/* --------------------------------------------------------------------------
+   RANKING
+   -------------------------------------------------------------------------- */
+
+.ranking-section {
+  padding: 22px 14px 40px;
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.ranking-titulo {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--verde-900);
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ranking-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--tarjeta-bg);
+  border-radius: var(--radio-lg);
+  padding: 10px 14px;
+  box-shadow: var(--sombra-suave);
+  border: 2px solid transparent;
+  transition: transform 0.25s ease;
+}
+
+.ranking-item:active {
+  transform: scale(0.98);
+}
+
+.ranking-item--1 {
+  border-color: var(--acento-oro);
+  background: linear-gradient(90deg, #fff9e6, #ffffff);
+}
+
+.ranking-item--2 {
+  border-color: #c9d3dc;
+}
+
+.ranking-item--3 {
+  border-color: #e3b587;
+}
+
+.ranking-posicion {
+  font-weight: 800;
+  font-size: 1rem;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--verde-500);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ranking-item--1 .ranking-posicion {
+  background: var(--acento-oro);
+  color: var(--verde-900);
+}
+.ranking-item--2 .ranking-posicion {
+  background: #b8c4cc;
+  color: #1a1a1a;
+}
+.ranking-item--3 .ranking-posicion {
+  background: #d69a63;
+  color: #3a1e00;
+}
+
+.ranking-foto-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  padding: 2px;
+  background: var(--avatar-color, var(--verde-500));
+  flex-shrink: 0;
+}
+
+.ranking-foto,
+.ranking-iniciales {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+}
+
+.ranking-iniciales {
+  background: var(--avatar-color, var(--verde-500));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.ranking-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ranking-nombre {
+  font-weight: 700;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ranking-puntos {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--verde-700);
+  flex-shrink: 0;
+}
+
+.estado-vacio {
+  text-align: center;
+  color: var(--texto-suave);
+  padding: 20px;
+  font-size: 0.9rem;
+}
+
+/* --------------------------------------------------------------------------
+   ACCESO ADMIN (enlace discreto)
+   -------------------------------------------------------------------------- */
+
+.admin-link {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--verde-900);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 1.2rem;
+  box-shadow: var(--sombra-fuerte);
+  opacity: 0.75;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 60;
+}
+
+.admin-link:hover,
+.admin-link:focus {
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+/* --------------------------------------------------------------------------
+   RESPONSIVE — TABLET
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 700px) {
+  .app-header {
+    padding: 18px 28px 24px;
+  }
+
+  .app-title {
+    font-size: 1.8rem;
+  }
+
+  .mapa-wrapper {
+    max-width: 520px;
+  }
+
+  .ranking-section {
+    max-width: 700px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   RESPONSIVE — ESCRITORIO (mapa + ranking lado a lado)
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 1024px) {
+  .contenido-principal {
+    display: grid;
+    grid-template-columns: minmax(380px, 460px) 1fr;
+    gap: 28px;
+    max-width: 1180px;
+    margin: 0 auto;
+    align-items: start;
+    padding: 0 24px;
+  }
+
+  .mapa-section {
+    padding: 28px 0 0;
+  }
+
+  .mapa-wrapper {
+    max-width: 100%;
+  }
+
+  .ranking-section {
+    padding: 28px 0 40px;
+    max-width: 100%;
+  }
+}
