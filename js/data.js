@@ -12,7 +12,11 @@
  *
  * Estructura de datos (misma forma que data/participantes.json):
  * {
- *   actividad: { nombre: string, puntos: number },
+ *   actividad: {
+ *     nombre: string, puntos: number,
+ *     inicio: string|null (ISO), fin: string|null (ISO),
+ *     completados: string[] (ids de participantes ya acreditados en ESTA actividad)
+ *   },
  *   participantes: [
  *     { id, nombre, foto, puntos, color }
  *   ]
@@ -55,18 +59,52 @@ const DataService = (() => {
     return state;
   }
 
-  /** Devuelve la actividad actual { nombre, puntos }. */
+  /**
+   * Devuelve la actividad actual, normalizada (por si el dato guardado
+   * viene de una versión anterior sin inicio/fin/completados).
+   */
   async function getActividad() {
     const state = readRaw() || (await init());
+    return {
+      nombre: state.actividad.nombre,
+      puntos: state.actividad.puntos,
+      inicio: state.actividad.inicio || null,
+      fin: state.actividad.fin || null,
+      completados: state.actividad.completados || [],
+    };
+  }
+
+  /**
+   * Reemplaza la actividad actual (nombre, puntos, inicio, fin).
+   * Al guardar una actividad se reinicia la lista de "completados":
+   * cambiar la actividad es, en la práctica, empezar la semana de cero.
+   */
+  async function setActividad(actividad) {
+    const state = readRaw() || (await init());
+    state.actividad = { ...actividad, completados: [] };
+    writeRaw(state);
     return state.actividad;
   }
 
-  /** Reemplaza la actividad actual. */
-  async function setActividad(actividad) {
+  /**
+   * Da los puntos de la actividad actual a UN solo participante y lo
+   * marca como "ya completado" para que no se le pueda volver a
+   * acreditar la misma actividad por error.
+   */
+  async function marcarCumplido(participanteId) {
     const state = readRaw() || (await init());
-    state.actividad = actividad;
+    const completadosPrevios = state.actividad.completados || [];
+    if (completadosPrevios.includes(participanteId)) {
+      // Ya se le había dado el punto por esta actividad: no hacer nada.
+      return { participantes: state.participantes, actividad: state.actividad };
+    }
+    const puntosActividad = state.actividad.puntos;
+    state.participantes = state.participantes.map((p) =>
+      p.id === participanteId ? { ...p, puntos: p.puntos + puntosActividad } : p
+    );
+    state.actividad.completados = [...completadosPrevios, participanteId];
     writeRaw(state);
-    return state.actividad;
+    return { participantes: state.participantes, actividad: state.actividad };
   }
 
   /** Devuelve la lista completa de participantes. */
@@ -128,6 +166,7 @@ const DataService = (() => {
       ...p,
       puntos: p.puntos + puntosActividad,
     }));
+    state.actividad.completados = state.participantes.map((p) => p.id);
     writeRaw(state);
     return state.participantes;
   }
@@ -142,6 +181,7 @@ const DataService = (() => {
     updateParticipante,
     deleteParticipante,
     addPuntos,
+    marcarCumplido,
     otorgarPuntosActividadATodos,
   };
 })();

@@ -57,6 +57,19 @@
               <input id="inputActividadPuntos" type="number" min="0" required />
             </div>
           </div>
+          <div class="fila">
+            <div class="campo">
+              <label for="inputActividadInicio">Inicio (opcional)</label>
+              <input id="inputActividadInicio" type="datetime-local" />
+            </div>
+            <div class="campo">
+              <label for="inputActividadFin">Fin / límite (opcional)</label>
+              <input id="inputActividadFin" type="datetime-local" />
+            </div>
+          </div>
+          <p style="font-size:0.78rem; color:var(--texto-suave); margin:-4px 0 12px;">
+            Si pones una fecha de fin, después de esa hora ya no se podrán marcar más participantes como "Cumplió" para esta actividad.
+          </p>
           <button type="submit" class="btn btn-primario">Guardar actividad</button>
           <span class="aviso-guardado" id="avisoActividad">Guardado ✓</span>
         </form>

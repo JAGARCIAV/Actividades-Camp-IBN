@@ -262,11 +262,63 @@ function crearFotoElemento(participante, claseImg, claseIniciales) {
  * 3) RENDER: HEADER (actividad actual)
  * ------------------------------------------------------------------ */
 
+// Se guarda la última actividad leída para que el cronómetro (que se
+// actualiza cada segundo) no tenga que volver a consultar los datos.
+let actividadActual = null;
+
 async function renderActividad() {
   const actividad = await DataService.getActividad();
+  actividadActual = actividad;
   document.getElementById('actividadNombre').textContent = actividad.nombre;
   document.getElementById('actividadPuntos').textContent = `Vale ${actividad.puntos} puntos`;
+  actualizarCronometro();
 }
+
+/** Convierte una cantidad de milisegundos a un texto tipo "2d 4h 15m 32s". */
+function formatearDuracion(ms) {
+  const totalSeg = Math.max(0, Math.floor(ms / 1000));
+  const dias = Math.floor(totalSeg / 86400);
+  const horas = Math.floor((totalSeg % 86400) / 3600);
+  const min = Math.floor((totalSeg % 3600) / 60);
+  const seg = totalSeg % 60;
+
+  const partes = [];
+  if (dias) partes.push(`${dias}d`);
+  if (dias || horas) partes.push(`${horas}h`);
+  if (dias || horas || min) partes.push(`${min}m`);
+  if (!dias && !horas) partes.push(`${seg}s`);
+  return partes.join(' ');
+}
+
+/**
+ * Muestra el cronómetro de la actividad actual (si tiene inicio y/o fin
+ * configurados desde el admin). Se llama una vez por segundo para que
+ * la cuenta regresiva se vea en vivo.
+ */
+function actualizarCronometro() {
+  const el = document.getElementById('actividadCronometro');
+  if (!actividadActual || (!actividadActual.inicio && !actividadActual.fin)) {
+    el.style.display = 'none';
+    return;
+  }
+
+  const ahora = new Date();
+  const inicio = actividadActual.inicio ? new Date(actividadActual.inicio) : null;
+  const fin = actividadActual.fin ? new Date(actividadActual.fin) : null;
+
+  el.style.display = 'inline-flex';
+  if (inicio && ahora < inicio) {
+    el.textContent = `⏳ Empieza en ${formatearDuracion(inicio - ahora)}`;
+  } else if (fin && ahora <= fin) {
+    el.textContent = `⏳ Termina en ${formatearDuracion(fin - ahora)}`;
+  } else if (fin && ahora > fin) {
+    el.textContent = '🔒 Actividad finalizada';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+setInterval(actualizarCronometro, 1000);
 
 /* --------------------------------------------------------------------
  * 4) RENDER: MAPA CON PARTICIPANTES

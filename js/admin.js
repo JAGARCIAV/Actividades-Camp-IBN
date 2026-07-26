@@ -23,19 +23,44 @@ function obtenerIniciales(nombre) {
     .join('');
 }
 
+/** Convierte una fecha ISO guardada en los datos al formato que espera
+ *  un <input type="datetime-local"> ("YYYY-MM-DDTHH:mm", hora local). */
+function isoAInputLocal(iso) {
+  if (!iso) return '';
+  const fecha = new Date(iso);
+  const pad = (n) => String(n).padStart(2, '0');
+  return (
+    `${fecha.getFullYear()}-${pad(fecha.getMonth() + 1)}-${pad(fecha.getDate())}` +
+    `T${pad(fecha.getHours())}:${pad(fecha.getMinutes())}`
+  );
+}
+
+/** Convierte el valor de un <input type="datetime-local"> a ISO (o null si está vacío). */
+function inputLocalAIso(valor) {
+  return valor ? new Date(valor).toISOString() : null;
+}
+
 /* --------------------------------------------------------------------
  * LOGIN / SESIÓN
  * ------------------------------------------------------------------ */
+
+// Refresca la lista de participantes cada cierto tiempo mientras el panel
+// está abierto, para que el aviso de "actividad finalizada" aparezca solo
+// en cuanto se cumple la hora límite (sin que el admin tenga que recargar).
+let intervaloRevisionVencimiento = null;
 
 function mostrarPanel() {
   document.getElementById('vistaLogin').classList.add('oculto');
   document.getElementById('vistaPanel').classList.remove('oculto');
   iniciarPanel();
+  clearInterval(intervaloRevisionVencimiento);
+  intervaloRevisionVencimiento = setInterval(renderParticipantes, 30000);
 }
 
 function mostrarLogin() {
   document.getElementById('vistaPanel').classList.add('oculto');
   document.getElementById('vistaLogin').classList.remove('oculto');
+  clearInterval(intervaloRevisionVencimiento);
 }
 
 function configurarLogin() {
@@ -69,6 +94,8 @@ async function renderFormActividad() {
   const actividad = await DataService.getActividad();
   document.getElementById('inputActividadNombre').value = actividad.nombre;
   document.getElementById('inputActividadPuntos').value = actividad.puntos;
+  document.getElementById('inputActividadInicio').value = isoAInputLocal(actividad.inicio);
+  document.getElementById('inputActividadFin').value = isoAInputLocal(actividad.fin);
 }
 
 function configurarFormActividad() {
@@ -77,7 +104,9 @@ function configurarFormActividad() {
     e.preventDefault();
     const nombre = document.getElementById('inputActividadNombre').value.trim();
     const puntos = parseInt(document.getElementById('inputActividadPuntos').value, 10) || 0;
-    await DataService.setActividad({ nombre, puntos });
+    const inicio = inputLocalAIso(document.getElementById('inputActividadInicio').value);
+    const fin = inputLocalAIso(document.getElementById('inputActividadFin').value);
+    await DataService.setActividad({ nombre, puntos, inicio, fin });
     mostrarAviso('avisoActividad');
     await renderParticipantes();
   });
@@ -169,6 +198,11 @@ async function renderParticipantes() {
   }
   vacio.style.display = 'none';
 
+  // La actividad ya venció si tiene fecha de fin y esa fecha ya pasó:
+  // después de eso ya no se puede marcar a nadie más como "Cumplió".
+  const actividadVencida = Boolean(actividad.fin) && new Date() > new Date(actividad.fin);
+  const completados = actividad.completados || [];
+
   participantes
     .slice()
     .sort((a, b) => b.puntos - a.puntos)
@@ -190,6 +224,20 @@ async function renderParticipantes() {
       inputNombreEl.setAttribute('aria-label', 'Nombre');
       nombreDiv.appendChild(inputNombreEl);
 
+      const yaCumplio = completados.includes(participante.id);
+      let controlCumplido;
+      if (yaCumplio) {
+        controlCumplido = `<span class="badge-estado badge-estado--ok">✅ Ya cumplió</span>`;
+      } else if (actividadVencida) {
+        controlCumplido = `<span class="badge-estado badge-estado--vencido">⏳ Actividad finalizada</span>`;
+      } else {
+        controlCumplido = `
+          <button type="button" class="btn btn-oro btn-sm" data-accion="cumplio" title="Dar los puntos de la actividad actual a este participante">
+            ✅ Cumplió (+${actividad.puntos})
+          </button>
+        `;
+      }
+
       const acciones = document.createElement('div');
       acciones.className = 'participante-admin-acciones';
       acciones.innerHTML = `
@@ -198,9 +246,7 @@ async function renderParticipantes() {
           <span>${participante.puntos} pts</span>
           <button type="button" data-accion="sumar" title="Sumar 5 puntos">+</button>
         </div>
-        <button type="button" class="btn btn-oro btn-sm" data-accion="cumplio" title="Dar los puntos de la actividad actual a este participante">
-          ✅ Cumplió (+${actividad.puntos})
-        </button>
+        ${controlCumplido}
         <input type="file" class="input-foto" accept="image/*" title="Cambiar foto" />
         <button type="button" class="btn btn-peligro btn-sm" data-accion="eliminar">Eliminar</button>
       `;
@@ -227,11 +273,13 @@ async function renderParticipantes() {
         await renderParticipantes();
       });
 
-      acciones.querySelector('[data-accion="cumplio"]').addEventListener('click', async () => {
-        const actividadActual = await DataService.getActividad();
-        await DataService.addPuntos(participante.id, actividadActual.puntos);
-        await renderParticipantes();
-      });
+      const btnCumplio = acciones.querySelector('[data-accion="cumplio"]');
+      if (btnCumplio) {
+        btnCumplio.addEventListener('click', async () => {
+          await DataService.marcarCumplido(participante.id);
+          await renderParticipantes();
+        });
+      }
 
       acciones.querySelector('[data-accion="eliminar"]').addEventListener('click', async () => {
         const ok = confirm(`¿Eliminar a ${participante.nombre}?`);

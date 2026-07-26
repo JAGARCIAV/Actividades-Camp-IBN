@@ -140,9 +140,26 @@ button {
   padding: 10px 16px;
   backdrop-filter: blur(6px);
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.actividad-card__fila {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.actividad-card__cronometro {
+  display: none;
+  align-self: flex-start;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 .actividad-card__info {

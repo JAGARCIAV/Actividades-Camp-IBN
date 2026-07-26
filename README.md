@@ -48,6 +48,23 @@ Luego abre `http://localhost:8080/index.html`.
 - Usuario: `admin`
 - Contraseña: `camp2027`
 
+## Actividad: inicio/fin y "Cumplió"
+
+La actividad actual puede tener un **inicio** y un **fin** opcionales (fecha y
+hora). Mientras la actividad esté activa, cada participante tiene un botón
+**"✅ Cumplió (+N)"** que le da individualmente los puntos de esa actividad
+(útil cuando no todos cumplen, por ejemplo, un reto semanal). Una vez que se
+le da a un participante, su botón cambia a **"Ya cumplió"** y no se le puede
+volver a acreditar por error. Pasada la hora de fin, los que no alcanzaron
+muestran **"Actividad finalizada"** en vez del botón.
+
+Al guardar una actividad nueva (cambiar nombre/puntos/fechas) se reinicia
+quién la ha cumplido: cada actividad (semana) empieza su propio conteo desde
+cero.
+
+La página pública muestra un cronómetro en vivo con el tiempo restante
+(o el aviso de que la actividad ya terminó).
+
 Es un login simple pensado para uso interno del equipo de campamento;
 no protege información sensible ni reemplaza un backend con autenticación real.
 
