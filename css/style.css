@@ -240,6 +240,23 @@ button {
   animation: aparecer 0.5s ease both;
 }
 
+/* Mientras le toca su turno de parpadeo, el avatar sube de z-index
+   para quedar por encima de sus vecinos (que están muy juntos), y al
+   terminar su turno vuelve a su altura normal en la pila. */
+.avatar-participante--parpadeo {
+  animation-name: zIndexParpadeo;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes zIndexParpadeo {
+  0% { z-index: 5; }
+  8% { z-index: 60; }
+  70% { z-index: 60; }
+  85% { z-index: 5; }
+  100% { z-index: 5; }
+}
+
 /* Envuelve ícono + nombre + puntos, separado del posicionamiento de
    .avatar-participante, para poder animarle un zoom (transform: scale)
    sin pisar el transform de posición del elemento de afuera. */

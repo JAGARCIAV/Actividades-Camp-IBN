@@ -124,10 +124,28 @@ const SEPARACION_MINIMA_PX = 36;
  *
  * Devuelve { posiciones, racimos }:
  * - posiciones: Map id -> {x%, y%}
- * - racimos: Map id -> {tamano, indice} (tamano = cuántos comparten ese
- *   punto; indice = su lugar en la fila). Sirve para decidir en el
- *   render si el nombre de ese participante debe parpadear.
+ * - racimos: Map id -> {tamano, turno} (tamano = cuántos comparten ese
+ *   punto; turno = su lugar en el ORDEN DE PARPADEO, que se calcula
+ *   aparte de su posición física en la fila para que el parpadeo no
+ *   siga siempre el mismo orden de izquierda a derecha, sino uno
+ *   aleatorio pero estable —no cambia entre renders— por participante).
  */
+
+/**
+ * Hash determinístico de un texto, con una mezcla final ("avalancha")
+ * para que ids parecidos entre sí (como "p1", "p2", "p3"...) no queden
+ * en el mismo orden secuencial al ordenar por este hash.
+ */
+function hashTexto(texto) {
+  let hash = 5381;
+  for (let i = 0; i < texto.length; i++) {
+    hash = ((hash << 5) + hash + texto.charCodeAt(i)) | 0;
+  }
+  hash = Math.imul(hash ^ (hash >>> 16), 0x45d9f3b);
+  hash = Math.imul(hash ^ (hash >>> 16), 0x45d9f3b);
+  hash = hash ^ (hash >>> 16);
+  return Math.abs(hash);
+}
 function calcularPosicionesSinSolape(participantes) {
   const base = participantes.map((participante) => {
     const progreso = participante.puntos / CONFIG.META_PUNTOS;
@@ -154,9 +172,17 @@ function calcularPosicionesSinSolape(participantes) {
     const perpX = -ty;
     const perpY = tx;
 
+    // Orden de parpadeo: aleatorio (por hash del id) y NO el mismo que
+    // el orden físico de la fila, para que no siempre parpadee primero
+    // el de la izquierda.
+    const idsPorTurno = racimo
+      .map((p) => p.participante.id)
+      .sort((a, b) => hashTexto(a) - hashTexto(b));
+
     const puntosRacimo = racimo.map((p, i) => {
       const offsetPerp = (i - (n - 1) / 2) * SEPARACION_MINIMA_PX;
-      racimos.set(p.participante.id, { tamano: n, indice: i });
+      const turno = idsPorTurno.indexOf(p.participante.id);
+      racimos.set(p.participante.id, { tamano: n, turno });
       return {
         id: p.participante.id,
         x: anclaX + perpX * offsetPerp,
@@ -326,7 +352,7 @@ const ultimosPuntos = new Map();
 
 // Cuántos segundos dura el turno de cada participante dentro del ciclo
 // de parpadeo, cuando 2 o más comparten el mismo punto del camino.
-const TIEMPO_PARPADEO_POR_NOMBRE = 1.5;
+const TIEMPO_PARPADEO_POR_NOMBRE = 1;
 
 async function renderMapa() {
   const participantes = await DataService.getParticipantes();
@@ -410,20 +436,26 @@ async function renderMapa() {
     const puntosSpan = el.querySelector('.avatar-puntos');
     if (infoRacimo && infoRacimo.tamano >= 2) {
       const duracion = infoRacimo.tamano * TIEMPO_PARPADEO_POR_NOMBRE;
-      const retraso = `-${infoRacimo.indice * TIEMPO_PARPADEO_POR_NOMBRE}s`;
+      const retraso = `-${infoRacimo.turno * TIEMPO_PARPADEO_POR_NOMBRE}s`;
 
-      [nombreSpan, puntosSpan, contenido].forEach((elemento) => {
+      // El z-index se anima en el elemento de AFUERA (.avatar-participante,
+      // que es el que compite en altura con los demás avatares del mapa),
+      // para que mientras uno hace zoom quede por encima de sus vecinos y,
+      // al terminar su turno, vuelva a su altura normal.
+      [el, nombreSpan, puntosSpan, contenido].forEach((elemento) => {
         elemento.style.animationDuration = `${duracion}s`;
         elemento.style.animationDelay = retraso;
       });
+      el.classList.add('avatar-participante--parpadeo');
       nombreSpan.classList.add('avatar-nombre--parpadeo');
       puntosSpan.classList.add('avatar-puntos--parpadeo');
       contenido.classList.add('avatar-contenido--parpadeo');
     } else {
-      [nombreSpan, puntosSpan, contenido].forEach((elemento) => {
+      [el, nombreSpan, puntosSpan, contenido].forEach((elemento) => {
         elemento.style.animationDuration = '';
         elemento.style.animationDelay = '';
       });
+      el.classList.remove('avatar-participante--parpadeo');
       nombreSpan.classList.remove('avatar-nombre--parpadeo');
       puntosSpan.classList.remove('avatar-puntos--parpadeo');
       contenido.classList.remove('avatar-contenido--parpadeo');
