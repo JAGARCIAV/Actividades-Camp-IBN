@@ -23,6 +23,11 @@ function obtenerIniciales(nombre) {
     .join('');
 }
 
+/** Recorta un texto largo (ej. nombre de actividad) para que quepa en un botón/badge. */
+function acortarTexto(texto, maxLargo = 16) {
+  return texto.length > maxLargo ? texto.slice(0, maxLargo - 1) + '…' : texto;
+}
+
 /** Convierte una fecha ISO guardada en los datos al formato que espera
  *  un <input type="datetime-local"> ("YYYY-MM-DDTHH:mm", hora local). */
 function isoAInputLocal(iso) {
@@ -44,9 +49,9 @@ function inputLocalAIso(valor) {
  * LOGIN / SESIÓN
  * ------------------------------------------------------------------ */
 
-// Refresca la lista de participantes cada cierto tiempo mientras el panel
-// está abierto, para que el aviso de "actividad finalizada" aparezca solo
-// en cuanto se cumple la hora límite (sin que el admin tenga que recargar).
+// Refresca las listas cada cierto tiempo mientras el panel está abierto,
+// para que el aviso de "actividad finalizada" aparezca solo en cuanto
+// se cumple la hora límite (sin que el admin tenga que recargar).
 let intervaloRevisionVencimiento = null;
 
 // Si otro admin (u otro celular) cambia algo, esta suscripción a
@@ -54,18 +59,22 @@ let intervaloRevisionVencimiento = null;
 let cancelarSuscripcion = null;
 
 /**
- * Si el admin está en medio de escribir un nombre en la lista, no la
- * reconstruyamos debajo de sus dedos: se espera a que termine (blur)
- * para no perder lo que estaba escribiendo.
+ * Si el admin está en medio de escribir un nombre/actividad, no
+ * reconstruyamos la lista debajo de sus dedos: se espera a que termine
+ * (blur) para no perder lo que estaba escribiendo.
  */
-function hayEdicionDeNombreEnCurso() {
+function hayEdicionEnCurso() {
   const activo = document.activeElement;
-  return Boolean(activo && activo.tagName === 'INPUT' && activo.closest('#listaParticipantesAdmin'));
+  return Boolean(
+    activo &&
+      activo.tagName === 'INPUT' &&
+      (activo.closest('#listaParticipantesAdmin') || activo.closest('#listaActividadesAdmin'))
+  );
 }
 
-async function renderParticipantesSiNoHayEdicion() {
-  if (hayEdicionDeNombreEnCurso()) return;
-  await renderParticipantes();
+async function refrescarSiNoHayEdicion() {
+  if (hayEdicionEnCurso()) return;
+  await Promise.all([renderActividadesAdmin(), renderParticipantes()]);
 }
 
 function mostrarPanel() {
@@ -74,13 +83,10 @@ function mostrarPanel() {
   iniciarPanel();
 
   clearInterval(intervaloRevisionVencimiento);
-  intervaloRevisionVencimiento = setInterval(renderParticipantesSiNoHayEdicion, 30000);
+  intervaloRevisionVencimiento = setInterval(refrescarSiNoHayEdicion, 30000);
 
-  // Solo se refresca la lista de participantes (no el formulario de
-  // actividad), para no interrumpir al admin si justo está escribiendo
-  // ahí cuando llega un cambio desde otro celular.
   if (cancelarSuscripcion) cancelarSuscripcion();
-  cancelarSuscripcion = DataService.suscribirCambios(() => renderParticipantesSiNoHayEdicion());
+  cancelarSuscripcion = DataService.suscribirCambios(() => refrescarSiNoHayEdicion());
 }
 
 function mostrarLogin() {
@@ -116,43 +122,121 @@ function configurarLogin() {
   });
 }
 
-/* --------------------------------------------------------------------
- * ACTIVIDAD ACTUAL
- * ------------------------------------------------------------------ */
-
-async function renderFormActividad() {
-  const actividad = await DataService.getActividad();
-  document.getElementById('inputActividadNombre').value = actividad.nombre;
-  document.getElementById('inputActividadPuntos').value = actividad.puntos;
-  document.getElementById('inputActividadInicio').value = isoAInputLocal(actividad.inicio);
-  document.getElementById('inputActividadFin').value = isoAInputLocal(actividad.fin);
-}
-
-function configurarFormActividad() {
-  const form = document.getElementById('formActividad');
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const nombre = document.getElementById('inputActividadNombre').value.trim();
-    const puntos = parseInt(document.getElementById('inputActividadPuntos').value, 10) || 0;
-    const inicio = inputLocalAIso(document.getElementById('inputActividadInicio').value);
-    const fin = inputLocalAIso(document.getElementById('inputActividadFin').value);
-    await DataService.setActividad({ nombre, puntos, inicio, fin });
-    mostrarAviso('avisoActividad');
-    await renderParticipantes();
-  });
-
-  document.getElementById('btnOtorgarATodos').addEventListener('click', async () => {
-    const ok = confirm('¿Dar los puntos de la actividad actual a TODOS los participantes?');
-    if (!ok) return;
-    await DataService.otorgarPuntosActividadATodos();
-    await renderParticipantes();
-  });
-}
-
-function mostrarAviso(id) {
-  const el = document.getElementById(id);
+function mostrarAviso(el) {
   el.classList.add('visible');
   setTimeout(() => el.classList.remove('visible'), 1800);
+}
+
+/* --------------------------------------------------------------------
+ * ACTIVIDADES (puede haber una o varias a la vez)
+ * ------------------------------------------------------------------ */
+
+/** Arma la fila/tarjeta editable de UNA actividad, con sus propios eventos. */
+function crearFilaActividad(actividad) {
+  const li = document.createElement('li');
+  li.className = 'actividad-admin-item';
+  li.dataset.id = actividad.id;
+
+  li.innerHTML = `
+    <div class="fila">
+      <div class="campo">
+        <label>Nombre de la actividad</label>
+        <input type="text" class="input-actividad-nombre" />
+      </div>
+      <div class="campo">
+        <label>Puntos que vale</label>
+        <input type="number" min="0" class="input-actividad-puntos" />
+      </div>
+    </div>
+    <div class="fila">
+      <div class="campo">
+        <label>Inicio (opcional)</label>
+        <input type="datetime-local" class="input-actividad-inicio" />
+      </div>
+      <div class="campo">
+        <label>Fin / límite (opcional)</label>
+        <input type="datetime-local" class="input-actividad-fin" />
+      </div>
+    </div>
+    <div class="actividad-admin-botones">
+      <button type="button" class="btn btn-primario btn-sm" data-accion="guardar">Guardar cambios</button>
+      <span class="aviso-guardado" data-aviso>Guardado ✓</span>
+      <button type="button" class="btn btn-oro btn-sm" data-accion="dar-a-todos">🎁 Dar a todos</button>
+      <button type="button" class="btn btn-peligro btn-sm" data-accion="eliminar-actividad">Eliminar</button>
+    </div>
+  `;
+
+  li.querySelector('.input-actividad-nombre').value = actividad.nombre;
+  li.querySelector('.input-actividad-puntos').value = actividad.puntos;
+  li.querySelector('.input-actividad-inicio').value = isoAInputLocal(actividad.inicio);
+  li.querySelector('.input-actividad-fin').value = isoAInputLocal(actividad.fin);
+
+  li.querySelector('[data-accion="guardar"]').addEventListener('click', async () => {
+    const nombre = li.querySelector('.input-actividad-nombre').value.trim();
+    const puntos = parseInt(li.querySelector('.input-actividad-puntos').value, 10) || 0;
+    const inicio = inputLocalAIso(li.querySelector('.input-actividad-inicio').value);
+    const fin = inputLocalAIso(li.querySelector('.input-actividad-fin').value);
+    if (!nombre) return;
+
+    await DataService.actualizarActividad(actividad.id, { nombre, puntos, inicio, fin });
+    mostrarAviso(li.querySelector('[data-aviso]'));
+    await renderParticipantes(); // los botones "cumplió" muestran nombre/puntos al día
+  });
+
+  li.querySelector('[data-accion="dar-a-todos"]').addEventListener('click', async () => {
+    const ok = confirm(`¿Dar los puntos de "${actividad.nombre}" a TODOS los participantes?`);
+    if (!ok) return;
+    await DataService.otorgarPuntosActividadATodos(actividad.id);
+    await renderParticipantes();
+  });
+
+  li.querySelector('[data-accion="eliminar-actividad"]').addEventListener('click', async () => {
+    const ok = confirm(`¿Eliminar la actividad "${actividad.nombre}"? Esto no quita los puntos ya otorgados.`);
+    if (!ok) return;
+    await DataService.eliminarActividad(actividad.id);
+    await renderActividadesAdmin();
+    await renderParticipantes();
+  });
+
+  return li;
+}
+
+async function renderActividadesAdmin() {
+  const actividades = await DataService.getActividades();
+  const lista = document.getElementById('listaActividadesAdmin');
+  const vacia = document.getElementById('listaActividadesVacia');
+
+  lista.innerHTML = '';
+  if (actividades.length === 0) {
+    vacia.style.display = 'block';
+    return;
+  }
+  vacia.style.display = 'none';
+  actividades.forEach((actividad) => lista.appendChild(crearFilaActividad(actividad)));
+}
+
+function configurarFormNuevaActividad() {
+  const btnMostrar = document.getElementById('btnMostrarFormNuevaActividad');
+  const form = document.getElementById('formNuevaActividad');
+
+  btnMostrar.addEventListener('click', () => {
+    form.classList.toggle('oculto');
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nombre = document.getElementById('inputNuevaActividadNombre').value.trim();
+    const puntos = parseInt(document.getElementById('inputNuevaActividadPuntos').value, 10) || 0;
+    const inicio = inputLocalAIso(document.getElementById('inputNuevaActividadInicio').value);
+    const fin = inputLocalAIso(document.getElementById('inputNuevaActividadFin').value);
+    if (!nombre) return;
+
+    await DataService.agregarActividad({ nombre, puntos, inicio, fin });
+    form.reset();
+    form.classList.add('oculto');
+    await renderActividadesAdmin();
+    await renderParticipantes();
+  });
 }
 
 /* --------------------------------------------------------------------
@@ -224,7 +308,7 @@ function configurarFormNuevoParticipante() {
 }
 
 /* --------------------------------------------------------------------
- * LISTA DE PARTICIPANTES (editar / puntos / foto / eliminar)
+ * LISTA DE PARTICIPANTES (editar / puntos / foto / cumplió / eliminar)
  * ------------------------------------------------------------------ */
 
 function crearIniciales(participante) {
@@ -246,9 +330,54 @@ function crearFotoElemento(participante) {
   return img;
 }
 
+/**
+ * Arma el grupo de "pastillas" de cumplido de un participante: una por
+ * cada actividad activa (puede haber 0, 1 o varias a la vez).
+ */
+function crearCumplidos(participante, actividades) {
+  const grupo = document.createElement('div');
+  grupo.className = 'participante-admin-cumplidos';
+
+  actividades.forEach((actividad) => {
+    const completados = actividad.completados || [];
+    const yaCumplio = completados.includes(participante.id);
+    const vencida = Boolean(actividad.fin) && new Date() > new Date(actividad.fin);
+    const nombreCorto = acortarTexto(actividad.nombre);
+
+    if (yaCumplio) {
+      const badge = document.createElement('span');
+      badge.className = 'badge-estado badge-estado--ok';
+      badge.title = `Ya cumplió: ${actividad.nombre}`;
+      badge.textContent = `✅ ${nombreCorto}`;
+      grupo.appendChild(badge);
+    } else if (vencida) {
+      const badge = document.createElement('span');
+      badge.className = 'badge-estado badge-estado--vencido';
+      badge.title = `${actividad.nombre}: actividad finalizada`;
+      badge.textContent = `⏳ ${nombreCorto}`;
+      grupo.appendChild(badge);
+    } else {
+      const boton = document.createElement('button');
+      boton.type = 'button';
+      boton.className = 'btn btn-oro btn-sm';
+      boton.title = `Dar los puntos de "${actividad.nombre}" a este participante`;
+      boton.textContent = `✅ ${nombreCorto} (+${actividad.puntos})`;
+      boton.addEventListener('click', async () => {
+        await DataService.marcarCumplido(actividad.id, participante.id);
+        await renderParticipantes();
+      });
+      grupo.appendChild(boton);
+    }
+  });
+
+  return grupo;
+}
+
 async function renderParticipantes() {
-  const participantes = await DataService.getParticipantes();
-  const actividad = await DataService.getActividad();
+  const [participantes, actividades] = await Promise.all([
+    DataService.getParticipantes(),
+    DataService.getActividades(),
+  ]);
   const lista = document.getElementById('listaParticipantesAdmin');
   const vacio = document.getElementById('listaAdminVacia');
 
@@ -259,11 +388,6 @@ async function renderParticipantes() {
     return;
   }
   vacio.style.display = 'none';
-
-  // La actividad ya venció si tiene fecha de fin y esa fecha ya pasó:
-  // después de eso ya no se puede marcar a nadie más como "Cumplió".
-  const actividadVencida = Boolean(actividad.fin) && new Date() > new Date(actividad.fin);
-  const completados = actividad.completados || [];
 
   participantes
     .slice()
@@ -286,20 +410,6 @@ async function renderParticipantes() {
       inputNombreEl.setAttribute('aria-label', 'Nombre');
       nombreDiv.appendChild(inputNombreEl);
 
-      const yaCumplio = completados.includes(participante.id);
-      let controlCumplido;
-      if (yaCumplio) {
-        controlCumplido = `<span class="badge-estado badge-estado--ok">✅ Ya cumplió</span>`;
-      } else if (actividadVencida) {
-        controlCumplido = `<span class="badge-estado badge-estado--vencido">⏳ Actividad finalizada</span>`;
-      } else {
-        controlCumplido = `
-          <button type="button" class="btn btn-oro btn-sm" data-accion="cumplio" title="Dar los puntos de la actividad actual a este participante">
-            ✅ Cumplió (+${actividad.puntos})
-          </button>
-        `;
-      }
-
       const acciones = document.createElement('div');
       acciones.className = 'participante-admin-acciones';
       acciones.innerHTML = `
@@ -308,10 +418,10 @@ async function renderParticipantes() {
           <span>${participante.puntos} pts</span>
           <button type="button" data-accion="sumar" title="Sumar 5 puntos">+</button>
         </div>
-        ${controlCumplido}
         <input type="file" class="input-foto" accept="image/*" title="Cambiar foto" />
         <button type="button" class="btn btn-peligro btn-sm" data-accion="eliminar">Eliminar</button>
       `;
+      acciones.insertBefore(crearCumplidos(participante, actividades), acciones.querySelector('.input-foto'));
 
       li.appendChild(fotoWrap);
       li.appendChild(nombreDiv);
@@ -334,14 +444,6 @@ async function renderParticipantes() {
         await DataService.addPuntos(participante.id, -5);
         await renderParticipantes();
       });
-
-      const btnCumplio = acciones.querySelector('[data-accion="cumplio"]');
-      if (btnCumplio) {
-        btnCumplio.addEventListener('click', async () => {
-          await DataService.marcarCumplido(participante.id);
-          await renderParticipantes();
-        });
-      }
 
       acciones.querySelector('[data-accion="eliminar"]').addEventListener('click', async () => {
         const ok = confirm(`¿Eliminar a ${participante.nombre}?`);
@@ -371,14 +473,14 @@ async function renderParticipantes() {
 
 async function iniciarPanel() {
   await DataService.init();
-  await renderFormActividad();
+  await renderActividadesAdmin();
   await renderParticipantes();
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
   await DataService.init();
   configurarLogin();
-  configurarFormActividad();
+  configurarFormNuevaActividad();
   configurarFormNuevoParticipante();
 
   if (AuthService.estaAutenticado()) {

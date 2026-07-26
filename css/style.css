@@ -132,8 +132,16 @@ button {
   letter-spacing: 1.5px;
 }
 
-.actividad-card {
+/* Contenedor de una o varias tarjetas de actividad (puede haber más
+   de un reto activo a la vez). */
+.actividades-contenedor {
   margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.actividad-card {
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: var(--radio-lg);
@@ -346,14 +354,14 @@ button {
 }
 
 .avatar-nombre {
-  font-size: 0.52rem;
+  font-size: 0.55rem;
   font-weight: 700;
   background: rgba(13, 43, 28, 0.85);
   color: #fff;
-  padding: 1px 6px;
+  padding: 1px 5px;
   border-radius: 999px;
   white-space: nowrap;
-  max-width: 60px;
+  max-width: 30px;
   overflow: hidden;
   text-overflow: ellipsis;
 }

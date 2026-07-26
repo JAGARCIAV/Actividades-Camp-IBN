@@ -1,11 +1,14 @@
 {
-  "actividad": {
-    "nombre": "Traer una visita",
-    "puntos": 20,
-    "inicio": null,
-    "fin": null,
-    "completados": []
-  },
+  "actividades": [
+    {
+      "id": "a1",
+      "nombre": "Traer una visita",
+      "puntos": 20,
+      "inicio": null,
+      "fin": null,
+      "completados": []
+    }
+  ],
   "participantes": [
     { "id": "p1", "nombre": "Jose Armando García Vallejos", "foto": "", "puntos": 0, "color": "#FF6B6B" },
     { "id": "p2", "nombre": "Anahí Belén Jesús Gras",        "foto": "", "puntos": 0, "color": "#4D96FF" },

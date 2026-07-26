@@ -48,22 +48,32 @@ Luego abre `http://localhost:8080/index.html`.
 - Usuario: `admin`
 - Contraseña: `camp2027`
 
-## Actividad: inicio/fin y "Cumplió"
+## Actividades: pueden ser varias a la vez
 
-La actividad actual puede tener un **inicio** y un **fin** opcionales (fecha y
-hora). Mientras la actividad esté activa, cada participante tiene un botón
-**"✅ Cumplió (+N)"** que le da individualmente los puntos de esa actividad
-(útil cuando no todos cumplen, por ejemplo, un reto semanal). Una vez que se
-le da a un participante, su botón cambia a **"Ya cumplió"** y no se le puede
-volver a acreditar por error. Pasada la hora de fin, los que no alcanzaron
-muestran **"Actividad finalizada"** en vez del botón.
+Puede haber **una o varias actividades activas al mismo tiempo** (por ejemplo,
+dos retos corriendo la misma semana). Cada una tiene su propio nombre, puntos,
+inicio/fin opcionales, y su propia lista de quién ya la cumplió — son
+totalmente independientes entre sí.
 
-Al guardar una actividad nueva (cambiar nombre/puntos/fechas) se reinicia
-quién la ha cumplido: cada actividad (semana) empieza su propio conteo desde
+En el admin, la sección "🎯 Actividades activas" lista todas las actividades,
+cada una editable y con su botón para eliminarla o para darle sus puntos a
+todos. El botón "➕ Agregar actividad nueva" crea otra en paralelo.
+
+Por cada actividad activa, cada participante tiene una "pastilla"
+**"✅ Nombre (+N)"** que le da individualmente los puntos de esa actividad en
+particular (útil cuando no todos cumplen, por ejemplo, un reto semanal). Una
+vez que se le da a un participante, su pastilla cambia a **"Ya cumplió"** y no
+se le puede volver a acreditar por error. Pasada la hora de fin de esa
+actividad, los que no alcanzaron ven **"actividad finalizada"** en vez del
+botón — esto es independiente por actividad, así que una puede vencer
+mientras otra sigue activa.
+
+Editar una actividad existente (cambiar nombre/puntos/fechas) NO reinicia
+quién ya la completó — solo crear una actividad nueva empieza su conteo desde
 cero.
 
-La página pública muestra un cronómetro en vivo con el tiempo restante
-(o el aviso de que la actividad ya terminó).
+La página pública muestra una tarjeta con cronómetro en vivo por cada
+actividad activa (tiempo restante, o el aviso de que ya terminó).
 
 Es un login simple pensado para uso interno del equipo de campamento;
 no protege información sensible ni reemplaza un backend con autenticación real.
@@ -85,11 +95,26 @@ progreso = puntos_del_participante / CONFIG.META_PUNTOS
 al campamento (5000 por defecto). Al llegar a esa meta, el participante
 queda marcado visualmente como **ganador** (brillo dorado + 🏆 en su pin y
 en el ranking). Si tu campamento maneja otro rango de puntos, solo cambia
-ese número.
+ese número (cuanto más bajo, más rápido se ve a la gente repartida por
+todo el camino en vez de amontonada cerca de INICIO).
 
-Si el mapa cambia en el futuro, solo hay que ajustar los puntos de
-`PATH_POINTS` para que sigan la nueva forma del camino; el resto del
-código no necesita tocarse.
+Los 18 puntos de `PATH_POINTS` no son una estimación a ojo: se extrajeron
+analizando los píxeles reales de `assets/mapa.png` (detectando el color del
+camino y trazando su línea central de punta a punta), así que siguen la
+curva real con precisión. Si el mapa cambia en el futuro, hay que repetir
+ese análisis (o ajustar los puntos a mano) para que sigan la nueva forma;
+el resto del código no necesita tocarse.
+
+## Cómo se muestra el nombre
+
+- En el **mapa**, cada avatar solo muestra sus **iniciales** (letra del nombre
+  + letra del "segundo nombre o apellido", ej. "Jose Armando" → "JA") —
+  como ahí ya se identifican por su foto y su color, no hace falta más, y
+  deja más espacio libre en el camino.
+- En el **ranking**, se muestra "Nombre + inicial del último apellido"
+  (ej. "Jose G."), para identificar mejor a cada quien en esa lista.
+- En el **admin**, siempre se ve y edita el nombre completo tal cual se
+  guardó.
 
 ## Fotografías de participantes
 
@@ -109,7 +134,8 @@ dispositivos ven exactamente los mismos datos, en tiempo real (vía
   de Firebase se importa directo desde su CDN (`gstatic.com`), sin necesidad
   de `npm` ni herramientas de build.
 - Estructura en Firestore: colección `participantes` (un documento por
-  participante) + documento `config/actividad` (la actividad actual).
+  participante) + colección `actividades` (un documento por cada actividad
+  activa; puede haber varias al mismo tiempo).
 - La primera vez que la base de datos está vacía, se siembra automáticamente
   con `data/participantes.json`.
 - Las claves de `firebaseConfig` dentro de `data.js` no son secretas — están

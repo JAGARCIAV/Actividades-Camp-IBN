@@ -43,41 +43,41 @@
 
     <div class="panel-contenido">
 
-      <!-- ACTIVIDAD ACTUAL -->
+      <!-- ACTIVIDADES ACTIVAS (puede haber una o varias a la vez) -->
       <div class="panel-tarjeta">
-        <h2>🎯 Actividad actual</h2>
-        <form id="formActividad">
+        <h2>🎯 Actividades activas</h2>
+        <ul class="actividades-admin-lista" id="listaActividadesAdmin"></ul>
+        <p class="lista-vacia-admin" id="listaActividadesVacia" style="display:none;">
+          No hay actividades activas. Agrega una abajo.
+        </p>
+
+        <button type="button" id="btnMostrarFormNuevaActividad" class="btn btn-secundario btn-sm" style="margin-top:12px;">
+          ➕ Agregar actividad nueva
+        </button>
+
+        <form id="formNuevaActividad" class="oculto" style="margin-top:14px;">
           <div class="fila">
             <div class="campo">
-              <label for="inputActividadNombre">Nombre de la actividad</label>
-              <input id="inputActividadNombre" type="text" required />
+              <label for="inputNuevaActividadNombre">Nombre de la actividad</label>
+              <input id="inputNuevaActividadNombre" type="text" required />
             </div>
             <div class="campo">
-              <label for="inputActividadPuntos">Puntos que vale</label>
-              <input id="inputActividadPuntos" type="number" min="0" required />
+              <label for="inputNuevaActividadPuntos">Puntos que vale</label>
+              <input id="inputNuevaActividadPuntos" type="number" min="0" required />
             </div>
           </div>
           <div class="fila">
             <div class="campo">
-              <label for="inputActividadInicio">Inicio (opcional)</label>
-              <input id="inputActividadInicio" type="datetime-local" />
+              <label for="inputNuevaActividadInicio">Inicio (opcional)</label>
+              <input id="inputNuevaActividadInicio" type="datetime-local" />
             </div>
             <div class="campo">
-              <label for="inputActividadFin">Fin / límite (opcional)</label>
-              <input id="inputActividadFin" type="datetime-local" />
+              <label for="inputNuevaActividadFin">Fin / límite (opcional)</label>
+              <input id="inputNuevaActividadFin" type="datetime-local" />
             </div>
           </div>
-          <p style="font-size:0.78rem; color:var(--texto-suave); margin:-4px 0 12px;">
-            Si pones una fecha de fin, después de esa hora ya no se podrán marcar más participantes como "Cumplió" para esta actividad.
-          </p>
-          <button type="submit" class="btn btn-primario">Guardar actividad</button>
-          <span class="aviso-guardado" id="avisoActividad">Guardado ✓</span>
+          <button type="submit" class="btn btn-primario">Crear actividad</button>
         </form>
-        <div style="margin-top:12px;">
-          <button type="button" id="btnOtorgarATodos" class="btn btn-oro btn-sm">
-            🎁 Dar estos puntos a todos los participantes
-          </button>
-        </div>
       </div>
 
       <!-- AGREGAR PARTICIPANTE -->

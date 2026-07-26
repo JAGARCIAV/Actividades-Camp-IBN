@@ -18,8 +18,9 @@
  * - Colección "participantes": un documento por participante
  *   ({ nombre, foto, puntos, color }), con el id del documento = id
  *   del participante.
- * - Documento "config/actividad": la actividad actual
- *   ({ nombre, puntos, inicio, fin, completados }).
+ * - Colección "actividades": un documento por actividad activa
+ *   ({ nombre, puntos, inicio, fin, completados }). Puede haber varias
+ *   a la vez (por ejemplo, dos retos corriendo en la misma semana).
  * ------------------------------------------------------------------
  */
 
@@ -50,35 +51,58 @@ const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 
 const PARTICIPANTES_COL = 'participantes';
+const ACTIVIDADES_COL = 'actividades';
 const SEED_URL = 'data/participantes.json';
-const actividadRef = doc(db, 'config', 'actividad');
 
 let yaVerificoSemilla = false;
 
+/** Rellena los campos que podrían faltar en datos guardados con una versión anterior. */
+function normalizarActividad(id, data) {
+  return {
+    id,
+    nombre: data.nombre || 'Sin actividad',
+    puntos: data.puntos || 0,
+    inicio: data.inicio || null,
+    fin: data.fin || null,
+    completados: data.completados || [],
+  };
+}
+
 /**
  * La primera vez que alguien abre la app (base de datos vacía), carga
- * el JSON semilla hacia Firestore. Las siguientes veces no hace nada.
+ * el JSON semilla hacia Firestore. Si existía la actividad única de
+ * una versión anterior (documento "config/actividad"), la migra como
+ * la primera actividad de la nueva colección. Las siguientes veces no
+ * hace nada.
  */
 async function initSiHaceFalta() {
   if (yaVerificoSemilla) return;
   yaVerificoSemilla = true;
 
-  const actividadSnap = await getDoc(actividadRef);
-  if (actividadSnap.exists()) return; // ya hay datos reales, no tocar nada
+  const actividadesSnap = await getDocs(collection(db, ACTIVIDADES_COL));
+  if (!actividadesSnap.empty) return; // ya hay datos reales, no tocar nada
+
+  // Migración desde la versión anterior (una sola actividad guardada
+  // en config/actividad), si existiera.
+  const viejaSnap = await getDoc(doc(db, 'config', 'actividad'));
+  if (viejaSnap.exists()) {
+    await setDoc(doc(db, ACTIVIDADES_COL, 'a1'), viejaSnap.data());
+    return;
+  }
 
   let semilla;
   try {
     const res = await fetch(SEED_URL);
     semilla = await res.json();
   } catch (err) {
-    semilla = {
-      actividad: { nombre: 'Sin actividad', puntos: 0, inicio: null, fin: null, completados: [] },
-      participantes: [],
-    };
+    semilla = { actividades: [], participantes: [] };
   }
 
-  await setDoc(actividadRef, semilla.actividad);
   const batch = writeBatch(db);
+  (semilla.actividades || []).forEach((a) => {
+    const { id, ...datos } = a;
+    batch.set(doc(db, ACTIVIDADES_COL, id), datos);
+  });
   semilla.participantes.forEach((p) => {
     const { id, ...datos } = p;
     batch.set(doc(db, PARTICIPANTES_COL, id), datos);
@@ -90,30 +114,36 @@ async function init() {
   await initSiHaceFalta();
 }
 
-/** Devuelve la actividad actual, normalizada. */
-async function getActividad() {
+/** Devuelve todas las actividades activas, normalizadas. */
+async function getActividades() {
   await initSiHaceFalta();
-  const snap = await getDoc(actividadRef);
-  const data = snap.exists() ? snap.data() : {};
-  return {
-    nombre: data.nombre || 'Sin actividad',
-    puntos: data.puntos || 0,
-    inicio: data.inicio || null,
-    fin: data.fin || null,
-    completados: data.completados || [],
-  };
+  const snap = await getDocs(collection(db, ACTIVIDADES_COL));
+  return snap.docs.map((d) => normalizarActividad(d.id, d.data()));
+}
+
+/** Crea una actividad nueva. */
+async function agregarActividad(actividad) {
+  await initSiHaceFalta();
+  const id = 'a' + Date.now();
+  await setDoc(doc(db, ACTIVIDADES_COL, id), { ...actividad, completados: [] });
+  return getActividades();
 }
 
 /**
- * Reemplaza la actividad actual. Al guardar se reinicia la lista de
- * "completados": cambiar la actividad es, en la práctica, empezar la
- * semana de cero.
+ * Actualiza los datos de una actividad existente (nombre, puntos,
+ * fechas...). A diferencia de crear una actividad nueva, esto NO
+ * reinicia quién ya la completó, salvo que `cambios` lo incluya
+ * explícitamente.
  */
-async function setActividad(actividad) {
-  await initSiHaceFalta();
-  const nueva = { ...actividad, completados: [] };
-  await setDoc(actividadRef, nueva);
-  return nueva;
+async function actualizarActividad(id, cambios) {
+  await updateDoc(doc(db, ACTIVIDADES_COL, id), cambios);
+  return getActividades();
+}
+
+/** Elimina una actividad. */
+async function eliminarActividad(id) {
+  await deleteDoc(doc(db, ACTIVIDADES_COL, id));
+  return getActividades();
 }
 
 /** Devuelve la lista completa de participantes. */
@@ -166,20 +196,23 @@ async function addPuntos(id, delta) {
 }
 
 /**
- * Da los puntos de la actividad actual a UN solo participante y lo
- * marca como "ya completado" para que no se le pueda volver a
- * acreditar la misma actividad por error.
+ * Da los puntos de UNA actividad a UN solo participante y lo marca
+ * como "ya completado" en esa actividad, para que no se le pueda
+ * volver a acreditar por error.
  */
-async function marcarCumplido(participanteId) {
-  const actividad = await getActividad();
+async function marcarCumplido(actividadId, participanteId) {
+  const actividadRef = doc(db, ACTIVIDADES_COL, actividadId);
+  const actividadSnap = await getDoc(actividadRef);
+  const actividad = normalizarActividad(actividadId, actividadSnap.exists() ? actividadSnap.data() : {});
+
   if (actividad.completados.includes(participanteId)) {
     return { participantes: await getParticipantes(), actividad };
   }
 
-  const ref = doc(db, PARTICIPANTES_COL, participanteId);
-  const snap = await getDoc(ref);
-  const puntosActuales = snap.exists() ? snap.data().puntos || 0 : 0;
-  await updateDoc(ref, { puntos: puntosActuales + actividad.puntos });
+  const participanteRef = doc(db, PARTICIPANTES_COL, participanteId);
+  const participanteSnap = await getDoc(participanteRef);
+  const puntosActuales = participanteSnap.exists() ? participanteSnap.data().puntos || 0 : 0;
+  await updateDoc(participanteRef, { puntos: puntosActuales + actividad.puntos });
 
   const completados = [...actividad.completados, participanteId];
   await updateDoc(actividadRef, { completados });
@@ -187,9 +220,11 @@ async function marcarCumplido(participanteId) {
   return { participantes: await getParticipantes(), actividad: { ...actividad, completados } };
 }
 
-/** Da los mismos puntos de la actividad actual a TODOS los participantes. */
-async function otorgarPuntosActividadATodos() {
-  const actividad = await getActividad();
+/** Da los mismos puntos de UNA actividad a TODOS los participantes. */
+async function otorgarPuntosActividadATodos(actividadId) {
+  const actividadRef = doc(db, ACTIVIDADES_COL, actividadId);
+  const actividadSnap = await getDoc(actividadRef);
+  const actividad = normalizarActividad(actividadId, actividadSnap.exists() ? actividadSnap.data() : {});
   const participantes = await getParticipantes();
 
   const batch = writeBatch(db);
@@ -203,23 +238,25 @@ async function otorgarPuntosActividadATodos() {
 }
 
 /**
- * Avisa a `callback` cada vez que cambian los participantes o la
- * actividad en Firestore (sin importar desde qué celular se hizo el
- * cambio). Devuelve una función para cancelar la suscripción.
+ * Avisa a `callback` cada vez que cambian los participantes o
+ * cualquier actividad en Firestore (sin importar desde qué celular se
+ * hizo el cambio). Devuelve una función para cancelar la suscripción.
  */
 function suscribirCambios(callback) {
-  const cancelarActividad = onSnapshot(actividadRef, () => callback());
+  const cancelarActividades = onSnapshot(collection(db, ACTIVIDADES_COL), () => callback());
   const cancelarParticipantes = onSnapshot(collection(db, PARTICIPANTES_COL), () => callback());
   return () => {
-    cancelarActividad();
+    cancelarActividades();
     cancelarParticipantes();
   };
 }
 
 window.DataService = {
   init,
-  getActividad,
-  setActividad,
+  getActividades,
+  agregarActividad,
+  actualizarActividad,
+  eliminarActividad,
   getParticipantes,
   saveParticipantes,
   addParticipante,

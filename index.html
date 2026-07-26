@@ -22,15 +22,12 @@
       </div>
     </div>
 
-    <div class="actividad-card">
-      <div class="actividad-card__fila">
-        <div class="actividad-card__info">
-          <span class="actividad-card__label">Actividad actual</span>
-          <span class="actividad-card__nombre" id="actividadNombre">Cargando...</span>
-        </div>
-        <span class="actividad-card__puntos" id="actividadPuntos">Vale 0 puntos</span>
+    <!-- Puede haber una o varias actividades activas a la vez; app.js
+         agrega una .actividad-card por cada una dentro de este contenedor. -->
+    <div class="actividades-contenedor" id="actividadesContenedor">
+      <div class="actividad-card">
+        <span class="actividad-card__nombre">Cargando...</span>
       </div>
-      <span class="actividad-card__cronometro" id="actividadCronometro"></span>
     </div>
   </header>
 

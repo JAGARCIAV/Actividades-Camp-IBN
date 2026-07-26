@@ -18,22 +18,35 @@
  * Como están en porcentaje, funcionan en cualquier tamaño de pantalla
  * sin tocar la imagen ni recalcular nada a mano.
  *
+ * Estos 18 puntos se extrajeron analizando los píxeles de la propia
+ * imagen (detectando el color del camino y trazando su línea central),
+ * no a ojo, así que siguen la curva real de punta a punta: desde el
+ * cartel INICIO hasta la entrada de la carpa en CAMPAMENTO.
+ *
  * Si en el futuro se reemplaza mapa.png por otra imagen con un camino
  * distinto, solo hay que editar estos puntos.
  * ------------------------------------------------------------------ */
 const MAPA_TAMANO = { ancho: 853, alto: 1844 };
 
 const PATH_POINTS = [
-  { x: 49, y: 97 }, // INICIO
-  { x: 45, y: 88 },
-  { x: 54, y: 79 },
-  { x: 43, y: 71 },
-  { x: 51, y: 63 },
-  { x: 39, y: 55 },
-  { x: 47, y: 47 },
-  { x: 58, y: 40 },
-  { x: 48, y: 33 },
-  { x: 44, y: 27 }, // CAMPAMENTO
+  { x: 53.9, y: 99.9 }, // INICIO
+  { x: 49.3, y: 94.7 },
+  { x: 45.3, y: 89.7 },
+  { x: 50.1, y: 84.8 },
+  { x: 54.4, y: 80.2 },
+  { x: 54.2, y: 75.2 },
+  { x: 44.2, y: 71.2 },
+  { x: 35.9, y: 66.6 },
+  { x: 43.7, y: 62.0 },
+  { x: 55.0, y: 58.6 },
+  { x: 53.9, y: 54.0 },
+  { x: 42.6, y: 50.7 },
+  { x: 39.9, y: 45.9 },
+  { x: 51.6, y: 42.8 },
+  { x: 58.8, y: 39.1 },
+  { x: 46.5, y: 36.6 },
+  { x: 41.3, y: 33.0 },
+  { x: 53.1, y: 30.1 }, // CAMPAMENTO
 ];
 
 /** Puntos necesarios para llegar completamente al campamento (100% del camino). */
@@ -284,16 +297,64 @@ function crearFotoElemento(participante, claseImg, claseIniciales) {
  * 3) RENDER: HEADER (actividad actual)
  * ------------------------------------------------------------------ */
 
-// Se guarda la última actividad leída para que el cronómetro (que se
-// actualiza cada segundo) no tenga que volver a consultar los datos.
-let actividadActual = null;
+// Se guardan las últimas actividades leídas para que el cronómetro (que
+// se actualiza cada segundo) no tenga que volver a consultar los datos.
+let actividadesCache = [];
 
-async function renderActividad() {
-  const actividad = await DataService.getActividad();
-  actividadActual = actividad;
-  document.getElementById('actividadNombre').textContent = actividad.nombre;
-  document.getElementById('actividadPuntos').textContent = `Vale ${actividad.puntos} puntos`;
-  actualizarCronometro();
+/**
+ * Puede haber una o varias actividades activas a la vez (por ejemplo,
+ * dos retos corriendo la misma semana). Se dibuja una tarjeta por cada
+ * una dentro de #actividadesContenedor.
+ */
+async function renderActividades() {
+  const actividades = await DataService.getActividades();
+  actividadesCache = actividades;
+  const contenedor = document.getElementById('actividadesContenedor');
+  contenedor.innerHTML = '';
+
+  if (actividades.length === 0) {
+    const card = document.createElement('div');
+    card.className = 'actividad-card';
+    const nombre = document.createElement('span');
+    nombre.className = 'actividad-card__nombre';
+    nombre.textContent = 'No hay actividades por ahora';
+    card.appendChild(nombre);
+    contenedor.appendChild(card);
+    return;
+  }
+
+  actividades.forEach((actividad) => {
+    const card = document.createElement('div');
+    card.className = 'actividad-card';
+    card.dataset.id = actividad.id;
+
+    const fila = document.createElement('div');
+    fila.className = 'actividad-card__fila';
+
+    const info = document.createElement('div');
+    info.className = 'actividad-card__info';
+    const label = document.createElement('span');
+    label.className = 'actividad-card__label';
+    label.textContent = 'Actividad actual';
+    const nombreSpan = document.createElement('span');
+    nombreSpan.className = 'actividad-card__nombre';
+    nombreSpan.textContent = actividad.nombre;
+    info.append(label, nombreSpan);
+
+    const puntosSpan = document.createElement('span');
+    puntosSpan.className = 'actividad-card__puntos';
+    puntosSpan.textContent = `Vale ${actividad.puntos} puntos`;
+
+    fila.append(info, puntosSpan);
+
+    const cronometro = document.createElement('span');
+    cronometro.className = 'actividad-card__cronometro';
+
+    card.append(fila, cronometro);
+    contenedor.appendChild(card);
+  });
+
+  actualizarCronometros();
 }
 
 /** Convierte una cantidad de milisegundos a un texto tipo "2d 4h 15m 32s". */
@@ -313,34 +374,39 @@ function formatearDuracion(ms) {
 }
 
 /**
- * Muestra el cronómetro de la actividad actual (si tiene inicio y/o fin
+ * Muestra el cronómetro de CADA actividad (si tiene inicio y/o fin
  * configurados desde el admin). Se llama una vez por segundo para que
  * la cuenta regresiva se vea en vivo.
  */
-function actualizarCronometro() {
-  const el = document.getElementById('actividadCronometro');
-  if (!actividadActual || (!actividadActual.inicio && !actividadActual.fin)) {
-    el.style.display = 'none';
-    return;
-  }
+function actualizarCronometros() {
+  actividadesCache.forEach((actividad) => {
+    const card = document.querySelector(`.actividad-card[data-id="${actividad.id}"]`);
+    if (!card) return;
+    const el = card.querySelector('.actividad-card__cronometro');
 
-  const ahora = new Date();
-  const inicio = actividadActual.inicio ? new Date(actividadActual.inicio) : null;
-  const fin = actividadActual.fin ? new Date(actividadActual.fin) : null;
+    if (!actividad.inicio && !actividad.fin) {
+      el.style.display = 'none';
+      return;
+    }
 
-  el.style.display = 'inline-flex';
-  if (inicio && ahora < inicio) {
-    el.textContent = `⏳ Empieza en ${formatearDuracion(inicio - ahora)}`;
-  } else if (fin && ahora <= fin) {
-    el.textContent = `⏳ Termina en ${formatearDuracion(fin - ahora)}`;
-  } else if (fin && ahora > fin) {
-    el.textContent = '🔒 Actividad finalizada';
-  } else {
-    el.style.display = 'none';
-  }
+    const ahora = new Date();
+    const inicio = actividad.inicio ? new Date(actividad.inicio) : null;
+    const fin = actividad.fin ? new Date(actividad.fin) : null;
+
+    el.style.display = 'inline-flex';
+    if (inicio && ahora < inicio) {
+      el.textContent = `⏳ Empieza en ${formatearDuracion(inicio - ahora)}`;
+    } else if (fin && ahora <= fin) {
+      el.textContent = `⏳ Termina en ${formatearDuracion(fin - ahora)}`;
+    } else if (fin && ahora > fin) {
+      el.textContent = '🔒 Actividad finalizada';
+    } else {
+      el.style.display = 'none';
+    }
+  });
 }
 
-setInterval(actualizarCronometro, 1000);
+setInterval(actualizarCronometros, 1000);
 
 /* --------------------------------------------------------------------
  * 4) RENDER: MAPA CON PARTICIPANTES
@@ -405,7 +471,7 @@ async function renderMapa() {
 
       const nombreSpan = document.createElement('span');
       nombreSpan.className = 'avatar-nombre';
-      nombreSpan.textContent = nombreCorto(participante.nombre);
+      nombreSpan.textContent = obtenerIniciales(participante.nombre);
 
       const puntosSpan = document.createElement('span');
       puntosSpan.className = 'avatar-puntos';
@@ -415,7 +481,7 @@ async function renderMapa() {
       el.appendChild(contenido);
       capa.appendChild(el);
     } else {
-      el.querySelector('.avatar-nombre').textContent = nombreCorto(participante.nombre);
+      el.querySelector('.avatar-nombre').textContent = obtenerIniciales(participante.nombre);
       el.querySelector('.avatar-puntos').textContent = `${participante.puntos} pts`;
       el.querySelector('.avatar-pin').style.setProperty('--avatar-color', participante.color);
       const fotoWrap = el.querySelector('.avatar-pin-foto-wrap');
@@ -550,7 +616,7 @@ function cargarLogo() {
  * ------------------------------------------------------------------ */
 
 async function renderTodo() {
-  await Promise.all([renderActividad(), renderMapa(), renderRanking()]);
+  await Promise.all([renderActividades(), renderMapa(), renderRanking()]);
 }
 
 async function iniciar() {
