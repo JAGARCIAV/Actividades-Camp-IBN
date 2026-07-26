@@ -99,7 +99,7 @@ function puntoYTangenteEnCamino(progreso) {
  * Separación mínima (en píxeles) que debe haber entre dos avatares para
  * que no se vean pegados ni encimados sobre el camino.
  */
-const SEPARACION_MINIMA_PX = 46;
+const SEPARACION_MINIMA_PX = 28;
 
 /**
  * Calcula la posición final en % de TODOS los participantes a la vez,
@@ -132,7 +132,7 @@ function calcularPosicionesSinSolape(participantes) {
 
   // Margen de seguridad para que ningún avatar quede tapado por el
   // borde de la imagen o le "corten los pies".
-  const MARGEN_BORDE_PX = 34;
+  const MARGEN_BORDE_PX = 18;
 
   function ubicarRacimo(racimo) {
     const n = racimo.length;
@@ -280,11 +280,20 @@ async function renderMapa() {
       el.className = 'avatar-participante';
       el.dataset.id = participante.id;
 
-      const wrap = document.createElement('div');
-      wrap.className = 'avatar-foto-wrap';
-      wrap.style.setProperty('--avatar-color', participante.color);
-      wrap.dataset.foto = participante.foto || '';
-      wrap.appendChild(crearFotoElemento(participante, 'avatar-foto', 'avatar-iniciales'));
+      const holder = document.createElement('div');
+      holder.className = 'avatar-pin-holder';
+
+      const pin = document.createElement('div');
+      pin.className = 'avatar-pin';
+      pin.style.setProperty('--avatar-color', participante.color);
+
+      const fotoWrap = document.createElement('div');
+      fotoWrap.className = 'avatar-pin-foto-wrap';
+      fotoWrap.dataset.foto = participante.foto || '';
+      fotoWrap.appendChild(crearFotoElemento(participante, 'avatar-foto', 'avatar-iniciales'));
+
+      pin.appendChild(fotoWrap);
+      holder.appendChild(pin);
 
       const nombreSpan = document.createElement('span');
       nombreSpan.className = 'avatar-nombre';
@@ -294,17 +303,17 @@ async function renderMapa() {
       puntosSpan.className = 'avatar-puntos';
       puntosSpan.textContent = `${participante.puntos} pts`;
 
-      el.append(wrap, nombreSpan, puntosSpan);
+      el.append(holder, nombreSpan, puntosSpan);
       capa.appendChild(el);
     } else {
       el.querySelector('.avatar-nombre').textContent = participante.nombre;
       el.querySelector('.avatar-puntos').textContent = `${participante.puntos} pts`;
-      const wrap = el.querySelector('.avatar-foto-wrap');
-      wrap.style.setProperty('--avatar-color', participante.color);
-      if (wrap.dataset.foto !== (participante.foto || '')) {
-        wrap.dataset.foto = participante.foto || '';
-        wrap.innerHTML = '';
-        wrap.appendChild(crearFotoElemento(participante, 'avatar-foto', 'avatar-iniciales'));
+      el.querySelector('.avatar-pin').style.setProperty('--avatar-color', participante.color);
+      const fotoWrap = el.querySelector('.avatar-pin-foto-wrap');
+      if (fotoWrap.dataset.foto !== (participante.foto || '')) {
+        fotoWrap.dataset.foto = participante.foto || '';
+        fotoWrap.innerHTML = '';
+        fotoWrap.appendChild(crearFotoElemento(participante, 'avatar-foto', 'avatar-iniciales'));
       }
     }
 

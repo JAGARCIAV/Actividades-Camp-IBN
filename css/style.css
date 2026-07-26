@@ -227,71 +227,100 @@ button {
   animation: aparecer 0.5s ease both;
 }
 
-.avatar-foto-wrap {
+/* --------------------------------------------------------------------------
+   PIN estilo GPS/ubicación (contiene la foto del participante)
+   -------------------------------------------------------------------------- */
+
+/* Caja "contenedora" del pin: su tamaño incluye la punta, así que su
+   borde inferior coincide exactamente con la punta del pin (ver la
+   matemática en el comentario de más abajo). */
+.avatar-pin-holder {
   position: relative;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  padding: 3px;
-  background: var(--avatar-color, var(--verde-500));
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3), 0 0 0 3px rgba(255, 255, 255, 0.9);
+  width: 24px;
+  height: 24px;
   animation: flotar 2.6s ease-in-out infinite;
+}
+
+/* El pin en sí: un cuadrado con 3 esquinas redondeadas y 1 recta,
+   rotado 45°, que da la clásica forma de gota/ubicación con la punta
+   hacia abajo. El cuadrado mide holder/√2 para que, tras rotarlo, su
+   punta quede justo en el borde inferior de .avatar-pin-holder. */
+.avatar-pin {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 17px;
+  height: 17px;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  border-radius: 50% 50% 50% 0;
+  background: var(--avatar-color, var(--verde-500));
+  border: 1.5px solid #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+/* Círculo con la foto, contra-rotado para que se vea derecho. */
+.avatar-pin-foto-wrap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 11px;
+  height: 11px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border-radius: 50%;
+  overflow: hidden;
+  background: #fff;
 }
 
 .avatar-foto {
   width: 100%;
   height: 100%;
-  border-radius: 50%;
   object-fit: cover;
-  background: #fff;
-  border: 2px solid #fff;
+  display: block;
 }
 
 .avatar-iniciales {
   width: 100%;
   height: 100%;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  background: var(--avatar-color, var(--verde-500));
-  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--avatar-color, var(--verde-500));
+  color: #fff;
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 0.32rem;
 }
 
 .avatar-nombre {
-  font-size: 0.62rem;
+  font-size: 0.52rem;
   font-weight: 700;
   background: rgba(13, 43, 28, 0.85);
   color: #fff;
-  padding: 2px 7px;
+  padding: 1px 6px;
   border-radius: 999px;
   white-space: nowrap;
-  max-width: 90px;
+  max-width: 74px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .avatar-puntos {
-  font-size: 0.6rem;
+  font-size: 0.5rem;
   font-weight: 800;
   color: var(--verde-900);
   background: var(--acento-oro);
-  padding: 1px 6px;
+  padding: 1px 5px;
   border-radius: 999px;
 }
 
 /* Efecto al recibir puntos / avanzar */
-.avatar-participante.avatar-boost .avatar-foto-wrap {
+.avatar-participante.avatar-boost .avatar-pin-holder {
   animation: boost 0.9s ease;
 }
 
 .avatar-participante.avatar-boost::after {
   content: "✨";
   position: absolute;
-  top: -18px;
+  top: -14px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 1.1rem;
