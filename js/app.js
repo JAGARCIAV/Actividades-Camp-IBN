@@ -64,40 +64,142 @@ const CAMINO = construirSegmentos();
 
 /**
  * Dado un progreso de 0 a 1 (0 = inicio, 1 = campamento), calcula la
- * posición {x,y} en % sobre el camino, avanzando por su longitud real
- * para que el recorrido se sienta natural sobre las curvas del mapa.
+ * posición en PÍXELES reales sobre el camino, junto con la tangente
+ * (dirección en la que se avanza en ese punto). La tangente sirve para
+ * poder abrir en abanico a los participantes perpendicularmente al
+ * camino cuando varios coinciden en el mismo lugar (ver más abajo).
  */
-function posicionEnCamino(progreso) {
+function puntoYTangenteEnCamino(progreso) {
   const t = Math.min(Math.max(progreso, 0), 1);
   let distancia = t * CAMINO.largoTotal;
 
   for (const seg of CAMINO.segmentos) {
-    if (distancia <= seg.largo || seg === CAMINO.segmentos[CAMINO.segmentos.length - 1]) {
+    const esUltimo = seg === CAMINO.segmentos[CAMINO.segmentos.length - 1];
+    if (distancia <= seg.largo || esUltimo) {
       const f = seg.largo === 0 ? 0 : distancia / seg.largo;
+      const desdePx = puntoAPixeles(seg.desde);
+      const hastaPx = puntoAPixeles(seg.hasta);
+      const dx = hastaPx.x - desdePx.x;
+      const dy = hastaPx.y - desdePx.y;
+      const largo = Math.hypot(dx, dy) || 1;
       return {
-        x: seg.desde.x + (seg.hasta.x - seg.desde.x) * f,
-        y: seg.desde.y + (seg.hasta.y - seg.desde.y) * f,
+        x: desdePx.x + dx * f,
+        y: desdePx.y + dy * f,
+        tx: dx / largo,
+        ty: dy / largo,
       };
     }
     distancia -= seg.largo;
   }
-  return PATH_POINTS[PATH_POINTS.length - 1];
+  const ultimo = puntoAPixeles(PATH_POINTS[PATH_POINTS.length - 1]);
+  return { x: ultimo.x, y: ultimo.y, tx: 0, ty: -1 };
 }
 
-/** Pequeño desplazamiento horizontal determinístico para que dos participantes
- *  con puntajes muy parecidos no queden exactamente encimados. */
-function jitterHorizontal(id) {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) % 1000;
-  return ((hash % 7) - 3) * 1.1; // entre -3.3% y +3.3%
-}
+/**
+ * Separación mínima (en píxeles) que debe haber entre dos avatares para
+ * que no se vean pegados ni encimados sobre el camino.
+ */
+const SEPARACION_MINIMA_PX = 46;
 
-/** Calcula la posición final {x,y} en % para un participante según sus puntos. */
-function posicionParaParticipante(participante) {
-  const progreso = participante.puntos / CONFIG.META_PUNTOS;
-  const base = posicionEnCamino(progreso);
-  const x = Math.min(Math.max(base.x + jitterHorizontal(participante.id), 8), 92);
-  return { x, y: base.y };
+/**
+ * Calcula la posición final en % de TODOS los participantes a la vez,
+ * evitando que se solapen cuando varios tienen puntajes iguales o muy
+ * cercanos.
+ *
+ * Cómo funciona:
+ * 1) Cada participante obtiene un punto "ideal" sobre el camino según
+ *    su progreso (puntos / META_PUNTOS).
+ * 2) Se ordenan por progreso (equivale a ordenarlos por su posición a
+ *    lo largo del camino) y se agrupan en "racimos" los que quedan más
+ *    cerca que SEPARACION_MINIMA_PX entre sí.
+ * 3) Cada racimo se reacomoda en una pequeña cuadrícula, centrada en el
+ *    punto ideal del grupo, usando como ejes la dirección del camino
+ *    (tangente) y su perpendicular. Así, sin importar cuántos
+ *    participantes compartan el mismo puntaje, quedan repartidos en un
+ *    grupito compacto en ese punto del camino, nunca uno encima de otro.
+ */
+function calcularPosicionesSinSolape(participantes) {
+  const base = participantes.map((participante) => {
+    const progreso = participante.puntos / CONFIG.META_PUNTOS;
+    return { participante, progreso, ...puntoYTangenteEnCamino(progreso) };
+  });
+
+  // Ordenar por progreso: los que van más cerca en puntos quedan
+  // consecutivos, que es justo lo que necesita el agrupador por cercanía.
+  base.sort((a, b) => b.progreso - a.progreso);
+
+  const resultados = [];
+
+  // Margen de seguridad para que ningún avatar quede tapado por el
+  // borde de la imagen o le "corten los pies".
+  const MARGEN_BORDE_PX = 34;
+
+  function ubicarRacimo(racimo) {
+    const n = racimo.length;
+    const anclaX = racimo.reduce((s, p) => s + p.x, 0) / n;
+    const anclaY = racimo.reduce((s, p) => s + p.y, 0) / n;
+    // Perpendicular al camino en ese punto (para abrir el racimo "de lado").
+    const { tx, ty } = racimo[0];
+    const perpX = -ty;
+    const perpY = tx;
+
+    const columnas = Math.ceil(Math.sqrt(n));
+    const filas = Math.ceil(n / columnas);
+
+    const puntosRacimo = racimo.map((p, i) => {
+      const col = i % columnas;
+      const fila = Math.floor(i / columnas);
+      const offsetPerp = (col - (columnas - 1) / 2) * SEPARACION_MINIMA_PX;
+      const offsetTangente = (fila - (filas - 1) / 2) * SEPARACION_MINIMA_PX;
+      return {
+        id: p.participante.id,
+        x: anclaX + perpX * offsetPerp + tx * offsetTangente,
+        y: anclaY + perpY * offsetPerp + ty * offsetTangente,
+      };
+    });
+
+    // Si el racimo completo se acerca al borde de la imagen, se desplaza
+    // COMO GRUPO (nunca punto por punto) para no perder la separación
+    // que ya se calculó entre sus avatares.
+    const minX = Math.min(...puntosRacimo.map((p) => p.x));
+    const maxX = Math.max(...puntosRacimo.map((p) => p.x));
+    const minY = Math.min(...puntosRacimo.map((p) => p.y));
+    const maxY = Math.max(...puntosRacimo.map((p) => p.y));
+
+    let shiftX = 0;
+    if (minX < MARGEN_BORDE_PX) shiftX = MARGEN_BORDE_PX - minX;
+    else if (maxX > MAPA_TAMANO.ancho - MARGEN_BORDE_PX) shiftX = MAPA_TAMANO.ancho - MARGEN_BORDE_PX - maxX;
+
+    let shiftY = 0;
+    if (minY < MARGEN_BORDE_PX) shiftY = MARGEN_BORDE_PX - minY;
+    else if (maxY > MAPA_TAMANO.alto - MARGEN_BORDE_PX) shiftY = MAPA_TAMANO.alto - MARGEN_BORDE_PX - maxY;
+
+    puntosRacimo.forEach((p) => resultados.push({ id: p.id, x: p.x + shiftX, y: p.y + shiftY }));
+  }
+
+  let racimoActual = [];
+  base.forEach((actual) => {
+    if (racimoActual.length === 0) {
+      racimoActual.push(actual);
+      return;
+    }
+    const anterior = racimoActual[racimoActual.length - 1];
+    const distancia = Math.hypot(actual.x - anterior.x, actual.y - anterior.y);
+    if (distancia < SEPARACION_MINIMA_PX) {
+      racimoActual.push(actual);
+    } else {
+      ubicarRacimo(racimoActual);
+      racimoActual = [actual];
+    }
+  });
+  if (racimoActual.length) ubicarRacimo(racimoActual);
+
+  // Convertir de píxeles a % y devolver un mapa id -> {x%, y%} listo para usar.
+  const mapaPosiciones = new Map();
+  resultados.forEach(({ id, x, y }) => {
+    mapaPosiciones.set(id, { x: (x / MAPA_TAMANO.ancho) * 100, y: (y / MAPA_TAMANO.alto) * 100 });
+  });
+  return mapaPosiciones;
 }
 
 /* --------------------------------------------------------------------
@@ -163,8 +265,12 @@ async function renderMapa() {
     if (!idsActuales.has(el.dataset.id)) el.remove();
   });
 
+  // Se calculan todas las posiciones juntas (no una por una) porque el
+  // anti-solape necesita ver el conjunto completo para armar los racimos.
+  const posiciones = calcularPosicionesSinSolape(participantes);
+
   participantes.forEach((participante) => {
-    const pos = posicionParaParticipante(participante);
+    const pos = posiciones.get(participante.id);
     let el = capa.querySelector(`.avatar-participante[data-id="${participante.id}"]`);
     const subioPuntos =
       ultimosPuntos.has(participante.id) && participante.puntos > ultimosPuntos.get(participante.id);
