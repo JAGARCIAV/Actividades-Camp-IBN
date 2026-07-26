@@ -97,16 +97,13 @@ function puntoYTangenteEnCamino(progreso) {
 
 /**
  * Separación (en píxeles) entre avatares que caen en el mismo punto del
- * camino. Se usan dos valores distintos a propósito:
- * - Si son solo 2, se separan lo suficiente para que ambos nombres se
- *   lean sin encimarse (SEPARACION_PAR_PX).
- * - Si son 3 o más, ya no caben todos los nombres uno al lado del otro,
- *   así que se dejan bien juntitos (SEPARACION_MINIMA_PX) y en vez de
- *   pelear por espacio, sus nombres van parpadeando por turnos (ver
- *   CSS: .avatar-nombre--parpadeo).
+ * camino. Cuando hay 2 o más empatados, ya no caben todos los nombres
+ * uno al lado del otro, así que se dejan bien juntitos y en vez de
+ * pelear por espacio, su nombre/puntos/ícono van parpadeando y
+ * agrandándose por turnos (ver CSS: .avatar-nombre--parpadeo,
+ * .avatar-puntos--parpadeo, .avatar-contenido--parpadeo).
  */
 const SEPARACION_MINIMA_PX = 36;
-const SEPARACION_PAR_PX = 109;
 
 /**
  * Calcula la posición final en % de TODOS los participantes a la vez,
@@ -156,10 +153,9 @@ function calcularPosicionesSinSolape(participantes) {
     const { tx, ty } = racimo[0];
     const perpX = -ty;
     const perpY = tx;
-    const espaciado = n === 2 ? SEPARACION_PAR_PX : SEPARACION_MINIMA_PX;
 
     const puntosRacimo = racimo.map((p, i) => {
-      const offsetPerp = (i - (n - 1) / 2) * espaciado;
+      const offsetPerp = (i - (n - 1) / 2) * SEPARACION_MINIMA_PX;
       racimos.set(p.participante.id, { tamano: n, indice: i });
       return {
         id: p.participante.id,
@@ -328,9 +324,9 @@ setInterval(actualizarCronometro, 1000);
 // aumentos y disparar la animación de "boost" al llegar a su nueva posición.
 const ultimosPuntos = new Map();
 
-// Cuántos segundos permanece cada nombre "en pantalla" dentro del ciclo
-// de parpadeo cuando 3 o más participantes comparten el mismo punto.
-const TIEMPO_PARPADEO_POR_NOMBRE = 1.4;
+// Cuántos segundos dura el turno de cada participante dentro del ciclo
+// de parpadeo, cuando 2 o más comparten el mismo punto del camino.
+const TIEMPO_PARPADEO_POR_NOMBRE = 1.5;
 
 async function renderMapa() {
   const participantes = await DataService.getParticipantes();
@@ -360,6 +356,12 @@ async function renderMapa() {
       el.className = 'avatar-participante';
       el.dataset.id = participante.id;
 
+      // avatar-contenido envuelve todo lo visual (ícono + nombre + puntos)
+      // separado del posicionamiento (que vive en .avatar-participante),
+      // para poder aplicarle un zoom sin pelear con la posición sobre el mapa.
+      const contenido = document.createElement('div');
+      contenido.className = 'avatar-contenido';
+
       const holder = document.createElement('div');
       holder.className = 'avatar-pin-holder';
 
@@ -383,7 +385,8 @@ async function renderMapa() {
       puntosSpan.className = 'avatar-puntos';
       puntosSpan.textContent = `${participante.puntos} pts`;
 
-      el.append(holder, nombreSpan, puntosSpan);
+      contenido.append(holder, nombreSpan, puntosSpan);
+      el.appendChild(contenido);
       capa.appendChild(el);
     } else {
       el.querySelector('.avatar-nombre').textContent = nombreCorto(participante.nombre);
@@ -397,21 +400,33 @@ async function renderMapa() {
       }
     }
 
-    // Si 3 o más participantes coinciden en el mismo punto del camino,
-    // sus nombres no caben uno al lado del otro: en vez de eso, cada
-    // uno "parpadea" (aparece por turnos) para que se alcancen a leer
-    // todos sin amontonarse.
+    // Si 2 o más participantes coinciden en el mismo punto del camino,
+    // su nombre y sus puntos no caben a la vez: en su lugar, cada uno
+    // "parpadea" por turnos (nombre + puntos juntos) y su ícono se
+    // agranda momentáneamente, para que se note de quién es el turno.
     const infoRacimo = racimos.get(participante.id);
+    const contenido = el.querySelector('.avatar-contenido');
     const nombreSpan = el.querySelector('.avatar-nombre');
-    if (infoRacimo && infoRacimo.tamano >= 3) {
+    const puntosSpan = el.querySelector('.avatar-puntos');
+    if (infoRacimo && infoRacimo.tamano >= 2) {
       const duracion = infoRacimo.tamano * TIEMPO_PARPADEO_POR_NOMBRE;
+      const retraso = `-${infoRacimo.indice * TIEMPO_PARPADEO_POR_NOMBRE}s`;
+
+      [nombreSpan, puntosSpan, contenido].forEach((elemento) => {
+        elemento.style.animationDuration = `${duracion}s`;
+        elemento.style.animationDelay = retraso;
+      });
       nombreSpan.classList.add('avatar-nombre--parpadeo');
-      nombreSpan.style.animationDuration = `${duracion}s`;
-      nombreSpan.style.animationDelay = `-${infoRacimo.indice * TIEMPO_PARPADEO_POR_NOMBRE}s`;
+      puntosSpan.classList.add('avatar-puntos--parpadeo');
+      contenido.classList.add('avatar-contenido--parpadeo');
     } else {
+      [nombreSpan, puntosSpan, contenido].forEach((elemento) => {
+        elemento.style.animationDuration = '';
+        elemento.style.animationDelay = '';
+      });
       nombreSpan.classList.remove('avatar-nombre--parpadeo');
-      nombreSpan.style.animationDuration = '';
-      nombreSpan.style.animationDelay = '';
+      puntosSpan.classList.remove('avatar-puntos--parpadeo');
+      contenido.classList.remove('avatar-contenido--parpadeo');
     }
 
     // Al llegar a la meta (CONFIG.META_PUNTOS), el pin se marca como

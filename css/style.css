@@ -235,13 +235,34 @@ button {
 .avatar-participante {
   position: absolute;
   transform: translate(-50%, -100%);
+  transition: left 1.4s cubic-bezier(0.34, 1.2, 0.4, 1), top 1.4s cubic-bezier(0.34, 1.2, 0.4, 1);
+  z-index: 5;
+  animation: aparecer 0.5s ease both;
+}
+
+/* Envuelve ícono + nombre + puntos, separado del posicionamiento de
+   .avatar-participante, para poder animarle un zoom (transform: scale)
+   sin pisar el transform de posición del elemento de afuera. */
+.avatar-contenido {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  transition: left 1.4s cubic-bezier(0.34, 1.2, 0.4, 1), top 1.4s cubic-bezier(0.34, 1.2, 0.4, 1);
-  z-index: 5;
-  animation: aparecer 0.5s ease both;
+  transform-origin: bottom center;
+}
+
+.avatar-contenido--parpadeo {
+  animation-name: zoomParpadeo;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes zoomParpadeo {
+  0% { transform: scale(1); }
+  8% { transform: scale(1.35); }
+  70% { transform: scale(1.35); }
+  85% { transform: scale(1); }
+  100% { transform: scale(1); }
 }
 
 /* --------------------------------------------------------------------------
@@ -320,10 +341,11 @@ button {
   text-overflow: ellipsis;
 }
 
-/* Cuando 3 o más participantes coinciden en el mismo punto del camino,
-   sus nombres no caben todos a la vez: cada uno aparece por turnos
-   (ver duración/retraso calculados en JS según cuántos son). */
-.avatar-nombre--parpadeo {
+/* Cuando 2 o más participantes coinciden en el mismo punto del camino,
+   su nombre y sus puntos no caben todos a la vez: cada uno aparece por
+   turnos (ver duración/retraso calculados en JS según cuántos son). */
+.avatar-nombre--parpadeo,
+.avatar-puntos--parpadeo {
   animation-name: parpadeoNombre;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
@@ -331,9 +353,9 @@ button {
 
 @keyframes parpadeoNombre {
   0% { opacity: 0; }
-  4% { opacity: 1; }
-  16% { opacity: 1; }
-  20% { opacity: 0; }
+  8% { opacity: 1; }
+  70% { opacity: 1; }
+  85% { opacity: 0; }
   100% { opacity: 0; }
 }
 

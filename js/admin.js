@@ -159,11 +159,38 @@ function mostrarAviso(id) {
  * AGREGAR PARTICIPANTE
  * ------------------------------------------------------------------ */
 
-function leerFotoComoDataURL(archivo) {
+/**
+ * Lee una foto y la redimensiona/comprime antes de guardarla.
+ *
+ * Firestore rechaza documentos de más de 1 MB, y una foto de celular
+ * sin procesar fácilmente pesa varios MB en base64. Como los avatares
+ * se muestran siempre muy pequeños (mapa y ranking), no hace falta
+ * más resolución que esta para que se vean nítidos.
+ */
+function leerFotoComoDataURL(archivo, ladoMaximo = 160, calidad = 0.75) {
   return new Promise((resolve) => {
     if (!archivo) return resolve('');
     const lector = new FileReader();
-    lector.onload = () => resolve(lector.result);
+    lector.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width >= height && width > ladoMaximo) {
+          height = Math.round((height * ladoMaximo) / width);
+          width = ladoMaximo;
+        } else if (height > ladoMaximo) {
+          width = Math.round((width * ladoMaximo) / height);
+          height = ladoMaximo;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', calidad));
+      };
+      img.onerror = () => resolve('');
+      img.src = lector.result;
+    };
     lector.onerror = () => resolve('');
     lector.readAsDataURL(archivo);
   });
@@ -179,12 +206,17 @@ function configurarFormNuevoParticipante() {
     if (!nombre) return;
 
     const foto = await leerFotoComoDataURL(archivo);
-    await DataService.addParticipante({
-      nombre,
-      puntos,
-      foto,
-      color: colorAleatorio(),
-    });
+    try {
+      await DataService.addParticipante({
+        nombre,
+        puntos,
+        foto,
+        color: colorAleatorio(),
+      });
+    } catch (err) {
+      alert('No se pudo guardar el participante. Intenta con otra foto (más liviana) o sin foto.');
+      return;
+    }
 
     form.reset();
     await renderParticipantes();
@@ -322,8 +354,12 @@ async function renderParticipantes() {
         const archivo = e.target.files[0];
         const foto = await leerFotoComoDataURL(archivo);
         if (foto) {
-          await DataService.updateParticipante(participante.id, { foto });
-          await renderParticipantes();
+          try {
+            await DataService.updateParticipante(participante.id, { foto });
+            await renderParticipantes();
+          } catch (err) {
+            alert('No se pudo guardar la foto. Intenta con otra imagen.');
+          }
         }
       });
     });
