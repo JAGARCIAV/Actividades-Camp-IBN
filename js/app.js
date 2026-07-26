@@ -505,15 +505,13 @@ async function iniciar() {
   await DataService.init();
   cargarLogo();
   await renderTodo();
-}
 
-// Cuando el admin guarda cambios en OTRA pestaña/ventana del mismo navegador,
-// localStorage dispara este evento y la vista pública se refresca sola.
-// (Al migrar a Firebase, este listener se reemplaza por un onSnapshot()
-// y el resto del código de render no cambia.)
-window.addEventListener('storage', (evento) => {
-  if (evento.key === 'camp2027_data') renderTodo();
-});
+  // Firestore avisa en tiempo real cuando cambian los datos, sin
+  // importar desde qué celular se hizo el cambio (el admin, otro
+  // participante viendo la página, etc.), así que la vista pública se
+  // actualiza sola para todos.
+  DataService.suscribirCambios(renderTodo);
+}
 
 // Refresca también al volver a la pestaña, por si hubo cambios mientras
 // el dispositivo estaba en segundo plano.

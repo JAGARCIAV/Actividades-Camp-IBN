@@ -1,187 +1,232 @@
 /**
  * data.js
  * ------------------------------------------------------------------
- * Capa de acceso a datos (Data Service).
+ * Capa de acceso a datos (Data Service), sobre Firebase Firestore.
  *
  * Toda la aplicación (app.js, admin.js) habla con los datos SOLO a
- * través del objeto `DataService`. Hoy internamente usa LocalStorage,
- * pero cada método es `async` y devuelve Promesas a propósito: el día
- * de mañana se puede reemplazar el contenido de estas funciones por
- * llamadas a Firebase (Firestore/Realtime Database) sin tocar ni una
- * línea de app.js ni admin.js, porque la "forma" de la API no cambia.
+ * través de `window.DataService`. Antes esto vivía en LocalStorage
+ * (por dispositivo); ahora vive en Firestore, así que todos los
+ * celulares ven exactamente los mismos datos en tiempo real.
  *
- * Estructura de datos (misma forma que data/participantes.json):
- * {
- *   actividad: {
- *     nombre: string, puntos: number,
- *     inicio: string|null (ISO), fin: string|null (ISO),
- *     completados: string[] (ids de participantes ya acreditados en ESTA actividad)
- *   },
- *   participantes: [
- *     { id, nombre, foto, puntos, color }
- *   ]
- * }
+ * Este archivo se carga como módulo (<script type="module">) porque el
+ * SDK de Firebase se importa directo desde su CDN, sin necesidad de
+ * npm ni herramientas de build. app.js y admin.js siguen siendo
+ * scripts normales: solo usan `window.DataService`, que este módulo
+ * deja listo antes de que se dispare "DOMContentLoaded".
+ *
+ * Estructura de datos en Firestore:
+ * - Colección "participantes": un documento por participante
+ *   ({ nombre, foto, puntos, color }), con el id del documento = id
+ *   del participante.
+ * - Documento "config/actividad": la actividad actual
+ *   ({ nombre, puntos, inicio, fin, completados }).
  * ------------------------------------------------------------------
  */
 
-const DataService = (() => {
-  const STORAGE_KEY = 'camp2027_data';
-  const SEED_URL = 'data/participantes.json';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  writeBatch,
+} from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 
-  /** Lee el estado completo desde LocalStorage (fuente de verdad actual). */
-  function readRaw() {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  }
+const firebaseConfig = {
+  apiKey: 'AIzaSyCZp24Hyou_SJ72AS8CQGl5DbkxGCc1xgg',
+  authDomain: 'ctividades-camp-2027.firebaseapp.com',
+  projectId: 'ctividades-camp-2027',
+  storageBucket: 'ctividades-camp-2027.firebasestorage.app',
+  messagingSenderId: '1079049963707',
+  appId: '1:1079049963707:web:bc14b7dd6c51cc344f819e',
+};
 
-  /** Escribe el estado completo en LocalStorage. */
-  function writeRaw(state) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
 
-  /**
-   * Se asegura de que exista información en LocalStorage.
-   * Si es la primera vez que se abre la app, carga el JSON semilla.
-   */
-  async function init() {
-    let state = readRaw();
-    if (!state) {
-      try {
-        const res = await fetch(SEED_URL);
-        state = await res.json();
-      } catch (err) {
-        // Si el fetch falla (por ejemplo al abrir el archivo con file://)
-        // arrancamos con datos vacíos en vez de romper la app.
-        state = { actividad: { nombre: 'Sin actividad', puntos: 0 }, participantes: [] };
-      }
-      writeRaw(state);
-    }
-    return state;
-  }
+const PARTICIPANTES_COL = 'participantes';
+const SEED_URL = 'data/participantes.json';
+const actividadRef = doc(db, 'config', 'actividad');
 
-  /**
-   * Devuelve la actividad actual, normalizada (por si el dato guardado
-   * viene de una versión anterior sin inicio/fin/completados).
-   */
-  async function getActividad() {
-    const state = readRaw() || (await init());
-    return {
-      nombre: state.actividad.nombre,
-      puntos: state.actividad.puntos,
-      inicio: state.actividad.inicio || null,
-      fin: state.actividad.fin || null,
-      completados: state.actividad.completados || [],
+let yaVerificoSemilla = false;
+
+/**
+ * La primera vez que alguien abre la app (base de datos vacía), carga
+ * el JSON semilla hacia Firestore. Las siguientes veces no hace nada.
+ */
+async function initSiHaceFalta() {
+  if (yaVerificoSemilla) return;
+  yaVerificoSemilla = true;
+
+  const actividadSnap = await getDoc(actividadRef);
+  if (actividadSnap.exists()) return; // ya hay datos reales, no tocar nada
+
+  let semilla;
+  try {
+    const res = await fetch(SEED_URL);
+    semilla = await res.json();
+  } catch (err) {
+    semilla = {
+      actividad: { nombre: 'Sin actividad', puntos: 0, inicio: null, fin: null, completados: [] },
+      participantes: [],
     };
   }
 
-  /**
-   * Reemplaza la actividad actual (nombre, puntos, inicio, fin).
-   * Al guardar una actividad se reinicia la lista de "completados":
-   * cambiar la actividad es, en la práctica, empezar la semana de cero.
-   */
-  async function setActividad(actividad) {
-    const state = readRaw() || (await init());
-    state.actividad = { ...actividad, completados: [] };
-    writeRaw(state);
-    return state.actividad;
-  }
+  await setDoc(actividadRef, semilla.actividad);
+  const batch = writeBatch(db);
+  semilla.participantes.forEach((p) => {
+    const { id, ...datos } = p;
+    batch.set(doc(db, PARTICIPANTES_COL, id), datos);
+  });
+  await batch.commit();
+}
 
-  /**
-   * Da los puntos de la actividad actual a UN solo participante y lo
-   * marca como "ya completado" para que no se le pueda volver a
-   * acreditar la misma actividad por error.
-   */
-  async function marcarCumplido(participanteId) {
-    const state = readRaw() || (await init());
-    const completadosPrevios = state.actividad.completados || [];
-    if (completadosPrevios.includes(participanteId)) {
-      // Ya se le había dado el punto por esta actividad: no hacer nada.
-      return { participantes: state.participantes, actividad: state.actividad };
-    }
-    const puntosActividad = state.actividad.puntos;
-    state.participantes = state.participantes.map((p) =>
-      p.id === participanteId ? { ...p, puntos: p.puntos + puntosActividad } : p
-    );
-    state.actividad.completados = [...completadosPrevios, participanteId];
-    writeRaw(state);
-    return { participantes: state.participantes, actividad: state.actividad };
-  }
+async function init() {
+  await initSiHaceFalta();
+}
 
-  /** Devuelve la lista completa de participantes. */
-  async function getParticipantes() {
-    const state = readRaw() || (await init());
-    return state.participantes;
-  }
-
-  /** Guarda la lista completa de participantes. */
-  async function saveParticipantes(lista) {
-    const state = readRaw() || (await init());
-    state.participantes = lista;
-    writeRaw(state);
-    return lista;
-  }
-
-  /** Agrega un participante nuevo. */
-  async function addParticipante(participante) {
-    const state = readRaw() || (await init());
-    const id = participante.id || 'p' + Date.now();
-    state.participantes.push({ ...participante, id });
-    writeRaw(state);
-    return state.participantes;
-  }
-
-  /** Actualiza campos de un participante existente por id. */
-  async function updateParticipante(id, cambios) {
-    const state = readRaw() || (await init());
-    state.participantes = state.participantes.map((p) =>
-      p.id === id ? { ...p, ...cambios } : p
-    );
-    writeRaw(state);
-    return state.participantes;
-  }
-
-  /** Elimina un participante por id. */
-  async function deleteParticipante(id) {
-    const state = readRaw() || (await init());
-    state.participantes = state.participantes.filter((p) => p.id !== id);
-    writeRaw(state);
-    return state.participantes;
-  }
-
-  /** Suma (o resta, con delta negativo) puntos a un participante. */
-  async function addPuntos(id, delta) {
-    const state = readRaw() || (await init());
-    state.participantes = state.participantes.map((p) =>
-      p.id === id ? { ...p, puntos: Math.max(0, p.puntos + delta) } : p
-    );
-    writeRaw(state);
-    return state.participantes;
-  }
-
-  /** Da los mismos puntos de la actividad actual a TODOS los participantes. */
-  async function otorgarPuntosActividadATodos() {
-    const state = readRaw() || (await init());
-    const puntosActividad = state.actividad.puntos;
-    state.participantes = state.participantes.map((p) => ({
-      ...p,
-      puntos: p.puntos + puntosActividad,
-    }));
-    state.actividad.completados = state.participantes.map((p) => p.id);
-    writeRaw(state);
-    return state.participantes;
-  }
-
+/** Devuelve la actividad actual, normalizada. */
+async function getActividad() {
+  await initSiHaceFalta();
+  const snap = await getDoc(actividadRef);
+  const data = snap.exists() ? snap.data() : {};
   return {
-    init,
-    getActividad,
-    setActividad,
-    getParticipantes,
-    saveParticipantes,
-    addParticipante,
-    updateParticipante,
-    deleteParticipante,
-    addPuntos,
-    marcarCumplido,
-    otorgarPuntosActividadATodos,
+    nombre: data.nombre || 'Sin actividad',
+    puntos: data.puntos || 0,
+    inicio: data.inicio || null,
+    fin: data.fin || null,
+    completados: data.completados || [],
   };
-})();
+}
+
+/**
+ * Reemplaza la actividad actual. Al guardar se reinicia la lista de
+ * "completados": cambiar la actividad es, en la práctica, empezar la
+ * semana de cero.
+ */
+async function setActividad(actividad) {
+  await initSiHaceFalta();
+  const nueva = { ...actividad, completados: [] };
+  await setDoc(actividadRef, nueva);
+  return nueva;
+}
+
+/** Devuelve la lista completa de participantes. */
+async function getParticipantes() {
+  await initSiHaceFalta();
+  const snap = await getDocs(collection(db, PARTICIPANTES_COL));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/** Guarda la lista completa de participantes (reemplaza uno por uno). */
+async function saveParticipantes(lista) {
+  await initSiHaceFalta();
+  const batch = writeBatch(db);
+  lista.forEach((p) => {
+    const { id, ...datos } = p;
+    batch.set(doc(db, PARTICIPANTES_COL, id), datos);
+  });
+  await batch.commit();
+  return lista;
+}
+
+/** Agrega un participante nuevo. */
+async function addParticipante(participante) {
+  await initSiHaceFalta();
+  const id = participante.id || 'p' + Date.now();
+  const { id: _ignorar, ...datos } = participante;
+  await setDoc(doc(db, PARTICIPANTES_COL, id), datos);
+  return getParticipantes();
+}
+
+/** Actualiza campos de un participante existente por id. */
+async function updateParticipante(id, cambios) {
+  await updateDoc(doc(db, PARTICIPANTES_COL, id), cambios);
+  return getParticipantes();
+}
+
+/** Elimina un participante por id. */
+async function deleteParticipante(id) {
+  await deleteDoc(doc(db, PARTICIPANTES_COL, id));
+  return getParticipantes();
+}
+
+/** Suma (o resta, con delta negativo) puntos a un participante. */
+async function addPuntos(id, delta) {
+  const ref = doc(db, PARTICIPANTES_COL, id);
+  const snap = await getDoc(ref);
+  const puntosActuales = snap.exists() ? snap.data().puntos || 0 : 0;
+  await updateDoc(ref, { puntos: Math.max(0, puntosActuales + delta) });
+  return getParticipantes();
+}
+
+/**
+ * Da los puntos de la actividad actual a UN solo participante y lo
+ * marca como "ya completado" para que no se le pueda volver a
+ * acreditar la misma actividad por error.
+ */
+async function marcarCumplido(participanteId) {
+  const actividad = await getActividad();
+  if (actividad.completados.includes(participanteId)) {
+    return { participantes: await getParticipantes(), actividad };
+  }
+
+  const ref = doc(db, PARTICIPANTES_COL, participanteId);
+  const snap = await getDoc(ref);
+  const puntosActuales = snap.exists() ? snap.data().puntos || 0 : 0;
+  await updateDoc(ref, { puntos: puntosActuales + actividad.puntos });
+
+  const completados = [...actividad.completados, participanteId];
+  await updateDoc(actividadRef, { completados });
+
+  return { participantes: await getParticipantes(), actividad: { ...actividad, completados } };
+}
+
+/** Da los mismos puntos de la actividad actual a TODOS los participantes. */
+async function otorgarPuntosActividadATodos() {
+  const actividad = await getActividad();
+  const participantes = await getParticipantes();
+
+  const batch = writeBatch(db);
+  participantes.forEach((p) => {
+    batch.update(doc(db, PARTICIPANTES_COL, p.id), { puntos: p.puntos + actividad.puntos });
+  });
+  batch.update(actividadRef, { completados: participantes.map((p) => p.id) });
+  await batch.commit();
+
+  return getParticipantes();
+}
+
+/**
+ * Avisa a `callback` cada vez que cambian los participantes o la
+ * actividad en Firestore (sin importar desde qué celular se hizo el
+ * cambio). Devuelve una función para cancelar la suscripción.
+ */
+function suscribirCambios(callback) {
+  const cancelarActividad = onSnapshot(actividadRef, () => callback());
+  const cancelarParticipantes = onSnapshot(collection(db, PARTICIPANTES_COL), () => callback());
+  return () => {
+    cancelarActividad();
+    cancelarParticipantes();
+  };
+}
+
+window.DataService = {
+  init,
+  getActividad,
+  setActividad,
+  getParticipantes,
+  saveParticipantes,
+  addParticipante,
+  updateParticipante,
+  deleteParticipante,
+  addPuntos,
+  marcarCumplido,
+  otorgarPuntosActividadATodos,
+  suscribirCambios,
+};

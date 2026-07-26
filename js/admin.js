@@ -49,18 +49,48 @@ function inputLocalAIso(valor) {
 // en cuanto se cumple la hora límite (sin que el admin tenga que recargar).
 let intervaloRevisionVencimiento = null;
 
+// Si otro admin (u otro celular) cambia algo, esta suscripción a
+// Firestore avisa para refrescar la vista en tiempo real.
+let cancelarSuscripcion = null;
+
+/**
+ * Si el admin está en medio de escribir un nombre en la lista, no la
+ * reconstruyamos debajo de sus dedos: se espera a que termine (blur)
+ * para no perder lo que estaba escribiendo.
+ */
+function hayEdicionDeNombreEnCurso() {
+  const activo = document.activeElement;
+  return Boolean(activo && activo.tagName === 'INPUT' && activo.closest('#listaParticipantesAdmin'));
+}
+
+async function renderParticipantesSiNoHayEdicion() {
+  if (hayEdicionDeNombreEnCurso()) return;
+  await renderParticipantes();
+}
+
 function mostrarPanel() {
   document.getElementById('vistaLogin').classList.add('oculto');
   document.getElementById('vistaPanel').classList.remove('oculto');
   iniciarPanel();
+
   clearInterval(intervaloRevisionVencimiento);
-  intervaloRevisionVencimiento = setInterval(renderParticipantes, 30000);
+  intervaloRevisionVencimiento = setInterval(renderParticipantesSiNoHayEdicion, 30000);
+
+  // Solo se refresca la lista de participantes (no el formulario de
+  // actividad), para no interrumpir al admin si justo está escribiendo
+  // ahí cuando llega un cambio desde otro celular.
+  if (cancelarSuscripcion) cancelarSuscripcion();
+  cancelarSuscripcion = DataService.suscribirCambios(() => renderParticipantesSiNoHayEdicion());
 }
 
 function mostrarLogin() {
   document.getElementById('vistaPanel').classList.add('oculto');
   document.getElementById('vistaLogin').classList.remove('oculto');
   clearInterval(intervaloRevisionVencimiento);
+  if (cancelarSuscripcion) {
+    cancelarSuscripcion();
+    cancelarSuscripcion = null;
+  }
 }
 
 function configurarLogin() {

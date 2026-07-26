@@ -16,7 +16,7 @@ actividades-camp/
 │   ├── style.css        Estilos públicos
 │   └── admin.css        Estilos del panel admin
 ├── js/
-│   ├── data.js           Capa de datos (LocalStorage, lista para Firebase)
+│   ├── data.js           Capa de datos (Firebase Firestore)
 │   ├── app.js             Lógica de la página pública
 │   ├── admin.js           Lógica del panel administrador
 │   └── auth.js            Login simple del admin
@@ -25,15 +25,15 @@ actividades-camp/
 │   ├── logo.png           Logo opcional (si no existe, se usa un badge CSS)
 │   └── avatars/           Fotos de participantes (opcional; se usan iniciales si faltan)
 ├── data/
-│   └── participantes.json  Datos semilla (se cargan la primera vez a LocalStorage)
+│   └── participantes.json  Datos semilla (se cargan la primera vez a Firestore)
 └── README.md
 ```
 
 ## Cómo abrir el proyecto
 
-Como `data.js` usa `fetch()` para cargar la semilla la primera vez, hay que
-servir los archivos con un servidor local (no funciona con doble clic en
-`index.html` por las restricciones de `file://`). Por ejemplo:
+Hay que servir los archivos con un servidor local (no funciona con doble clic
+en `index.html`, tanto por las restricciones de `file://` con `fetch()` como
+porque `data.js` se carga como módulo ES). Por ejemplo:
 
 ```bash
 cd actividades-camp
@@ -92,26 +92,36 @@ código no necesita tocarse.
 ## Fotografías de participantes
 
 Van en `assets/avatars/` o se suben directamente desde el panel admin
-(se guardan como `data:` URL dentro de LocalStorage). Si una foto no
+(se guardan como `data:` URL dentro de Firestore). Si una foto no
 existe o no carga, automáticamente se muestran las iniciales del nombre
 sobre un círculo de color.
 
-## Preparado para migrar a Firebase
+## Base de datos: Firebase Firestore
 
-Toda la app llama a los datos a través de `DataService` (`js/data.js`),
-y cada método ya es `async`/devuelve una Promesa aunque hoy lea y escriba
-en LocalStorage de forma síncrona. Para migrar a Firebase más adelante:
+Toda la app llama a los datos a través de `DataService` (`js/data.js`), que
+por dentro usa **Firebase Firestore** en vez de LocalStorage — así todos los
+dispositivos ven exactamente los mismos datos, en tiempo real (vía
+`onSnapshot`), sin depender del navegador de cada quien.
 
-1. Reemplazar el contenido interno de cada función de `js/data.js` por
-   llamadas a Firestore/Realtime Database (por ejemplo `getDocs`,
-   `setDoc`, `onSnapshot`, etc.).
-2. Mantener los mismos nombres de función y la misma forma de los datos.
-3. Ni `app.js` ni `admin.js` necesitan cambios, porque nunca acceden a
-   LocalStorage directamente.
-4. El listener `window.addEventListener('storage', ...)` en `app.js`
-   (que hoy detecta cambios entre pestañas) se reemplazaría por el
-   `onSnapshot()` de Firebase para tener actualizaciones en tiempo real
-   entre distintos dispositivos, no solo distintas pestañas del mismo navegador.
+- `js/data.js` se carga como módulo (`<script type="module">`) porque el SDK
+  de Firebase se importa directo desde su CDN (`gstatic.com`), sin necesidad
+  de `npm` ni herramientas de build.
+- Estructura en Firestore: colección `participantes` (un documento por
+  participante) + documento `config/actividad` (la actividad actual).
+- La primera vez que la base de datos está vacía, se siembra automáticamente
+  con `data/participantes.json`.
+- Las claves de `firebaseConfig` dentro de `data.js` no son secretas — están
+  pensadas para ir en código público del navegador. Lo que sí protege el
+  acceso son las **reglas de seguridad de Firestore** (configuradas en la
+  consola de Firebase, no en este repo).
+
+**Nota de seguridad:** como el login del admin es simple (usuario/contraseña
+fijos en el propio código, sin autenticación real), las reglas de Firestore
+quedan abiertas para lectura y escritura — el nivel de protección es similar
+al que había antes con LocalStorage, solo que ahora compartido entre todos
+los dispositivos. Si más adelante se quiere cerrar más el acceso, habría que
+agregar autenticación real de Firebase (por ejemplo email/contraseña) y
+reglas que exijan `request.auth != null`.
 
 ## Notas de diseño
 
