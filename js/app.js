@@ -181,6 +181,87 @@ function dibujarLineasCarriles() {
   }
 }
 
+/**
+ * Ancho real del camino de tierra (en píxeles nativos de la imagen,
+ * medido desde el centro hacia cada lado) en 41 puntos a lo largo del
+ * recorrido. Se extrajo analizando los píxeles de assets/mapa.png
+ * (mismo método que PATH_POINTS: detección de color), con un margen de
+ * seguridad del 25% ya aplicado para no salirse nunca del camino
+ * dibujado. Sirve para que el "deambular" (caminar de lado a lado)
+ * use el ancho real disponible en cada punto, en vez de una distancia
+ * fija e igual en todos lados.
+ */
+const ANCHO_CAMINO = [
+  { progreso: 0.0, izquierda: 37.5, derecha: 22.5 },
+  { progreso: 0.025, izquierda: 37.5, derecha: 22.5 },
+  { progreso: 0.05, izquierda: 37.5, derecha: 34.3 },
+  { progreso: 0.075, izquierda: 37.5, derecha: 46.1 },
+  { progreso: 0.1, izquierda: 37.5, derecha: 57.9 },
+  { progreso: 0.125, izquierda: 37.5, derecha: 69.8 },
+  { progreso: 0.15, izquierda: 37.5, derecha: 81.6 },
+  { progreso: 0.175, izquierda: 37.5, derecha: 93.4 },
+  { progreso: 0.2, izquierda: 37.5, derecha: 105.2 },
+  { progreso: 0.225, izquierda: 37.5, derecha: 111.9 },
+  { progreso: 0.25, izquierda: 52.2, derecha: 109.0 },
+  { progreso: 0.275, izquierda: 66.9, derecha: 106.1 },
+  { progreso: 0.3, izquierda: 81.6, derecha: 103.2 },
+  { progreso: 0.325, izquierda: 85.5, derecha: 100.4 },
+  { progreso: 0.35, izquierda: 85.5, derecha: 97.5 },
+  { progreso: 0.375, izquierda: 81.8, derecha: 90.0 },
+  { progreso: 0.4, izquierda: 81.8, derecha: 82.5 },
+  { progreso: 0.425, izquierda: 81.8, derecha: 82.5 },
+  { progreso: 0.45, izquierda: 91.0, derecha: 82.5 },
+  { progreso: 0.475, izquierda: 100.2, derecha: 93.0 },
+  { progreso: 0.5, izquierda: 104.2, derecha: 70.5 },
+  { progreso: 0.525, izquierda: 83.2, derecha: 60.0 },
+  { progreso: 0.55, izquierda: 67.5, derecha: 58.1 },
+  { progreso: 0.575, izquierda: 67.5, derecha: 56.2 },
+  { progreso: 0.6, izquierda: 67.5, derecha: 54.4 },
+  { progreso: 0.625, izquierda: 51.0, derecha: 52.5 },
+  { progreso: 0.65, izquierda: 48.8, derecha: 50.6 },
+  { progreso: 0.675, izquierda: 48.8, derecha: 48.8 },
+  { progreso: 0.7, izquierda: 48.8, derecha: 48.8 },
+  { progreso: 0.725, izquierda: 48.8, derecha: 48.8 },
+  { progreso: 0.75, izquierda: 58.5, derecha: 39.8 },
+  { progreso: 0.775, izquierda: 39.8, derecha: 30.8 },
+  { progreso: 0.8, izquierda: 31.5, derecha: 30.8 },
+  { progreso: 0.825, izquierda: 31.5, derecha: 30.8 },
+  { progreso: 0.85, izquierda: 25.5, derecha: 26.2 },
+  { progreso: 0.875, izquierda: 16.5, derecha: 21.8 },
+  { progreso: 0.9, izquierda: 16.5, derecha: 21.8 },
+  { progreso: 0.925, izquierda: 16.5, derecha: 20.2 },
+  { progreso: 0.95, izquierda: 16.5, derecha: 10.5 },
+  { progreso: 0.975, izquierda: 13.5, derecha: 2.2 },
+  { progreso: 1.0, izquierda: 13.5, derecha: 2.2 },
+];
+
+/** Ancho disponible (px nativos) hacia cada lado del camino, en un progreso dado. */
+function anchoDelCaminoEn(progreso) {
+  const t = Math.min(Math.max(progreso, 0), 1);
+  for (let i = 0; i < ANCHO_CAMINO.length - 1; i++) {
+    const a = ANCHO_CAMINO[i];
+    const b = ANCHO_CAMINO[i + 1];
+    if (t <= b.progreso || i === ANCHO_CAMINO.length - 2) {
+      const f = (t - a.progreso) / (b.progreso - a.progreso || 1);
+      return {
+        izquierda: a.izquierda + (b.izquierda - a.izquierda) * f,
+        derecha: a.derecha + (b.derecha - a.derecha) * f,
+      };
+    }
+  }
+  return { izquierda: 20, derecha: 20 };
+}
+
+/** Factor de escala entre los píxeles nativos de la imagen y los píxeles
+ *  reales en pantalla (el mapa se ve más chico o más grande según el
+ *  ancho del dispositivo). Se usa para que el deambular se vea del
+ *  tamaño correcto sin importar la pantalla. */
+function escalaMapaActual() {
+  const wrapper = document.getElementById('mapaWrapper');
+  if (!wrapper || !wrapper.clientWidth) return 1;
+  return wrapper.clientWidth / MAPA_TAMANO.ancho;
+}
+
 // Margen de seguridad para que ningún avatar quede tapado por el borde
 // de la imagen o le "corten los pies".
 const MARGEN_BORDE_PX = 23;
@@ -457,7 +538,7 @@ function terminarCaminata(participante, contenido, sprite) {
   } else if (!timersDeambular.has(participante.id)) {
     sprite.classList.add('avatar-sprite--idle');
     setDireccion(sprite, 'abajo');
-    iniciarDeambular(participante.id, contenido, sprite);
+    iniciarDeambular(participante, contenido, sprite);
   }
 }
 
@@ -487,16 +568,38 @@ function detenerCicloGanador(participanteId) {
 /**
  * Mientras un participante está parado (no ganó ni le acaban de sumar
  * puntos), de vez en cuando camina unos pasos hacia un lado y vuelve a
- * su línea, como si explorara alrededor de su lugar en el camino. Cada
- * quien tiene su propio ritmo aleatorio, para que no se vean todos
- * moviéndose sincronizados.
+ * su línea, como si explorara alrededor de su lugar en el camino.
+ * Usa el ANCHO REAL del camino de tierra en ese punto (ANCHO_CAMINO),
+ * así que en tramos anchos explora bastante y en tramos angostos se
+ * queda más cerca de su línea, sin salirse nunca del camino dibujado.
+ * Cada quien tiene su propio ritmo aleatorio, para que no se vean
+ * todos moviéndose sincronizados.
  */
-function iniciarDeambular(participanteId, contenido, sprite) {
+function iniciarDeambular(participante, contenido, sprite) {
+  const participanteId = participante.id;
+
   function paso() {
     if (!document.body.contains(contenido)) return; // el avatar ya no existe
 
+    const progreso = participante.puntos / CONFIG.META_PUNTOS;
+    const { tx, ty } = puntoYTangenteEnCamino(progreso);
+    const perpX = -ty;
+    const perpY = tx;
+    const lane = participante.lane || (hashTexto(participante.id) % LANE_COUNT) + 1;
+    const offsetActual = offsetDeLane(lane);
+    const ancho = anchoDelCaminoEn(progreso);
+
+    // Espacio real disponible desde SU línea (no desde el centro) hacia
+    // cada lado, con margen para no llegar justo al borde del camino.
+    const espacioIzquierda = Math.max(6, (ancho.izquierda - offsetActual) * 0.85);
+    const espacioDerecha = Math.max(6, (ancho.derecha + offsetActual) * 0.85);
+
     const haciaIzquierda = Math.random() < 0.5;
-    const distancia = 10 + Math.random() * 14; // 10 a 24px
+    const distanciaNativa = 6 + Math.random() * (haciaIzquierda ? espacioIzquierda : espacioDerecha);
+    const escala = escalaMapaActual();
+    const signo = haciaIzquierda ? 1 : -1;
+    const dx = perpX * distanciaNativa * signo * escala;
+    const dy = perpY * distanciaNativa * signo * escala;
     const duracionPaso = 900 + Math.random() * 500;
 
     sprite.classList.remove('avatar-sprite--idle');
@@ -504,7 +607,7 @@ function iniciarDeambular(participanteId, contenido, sprite) {
     setDireccion(sprite, haciaIzquierda ? 'izquierda' : 'derecha');
 
     contenido.style.transition = `transform ${duracionPaso}ms ease-in-out`;
-    contenido.style.transform = `translateX(${haciaIzquierda ? -distancia : distancia}px)`;
+    contenido.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px)`;
 
     const volver = setTimeout(() => {
       if (!document.body.contains(contenido)) return;
@@ -513,7 +616,7 @@ function iniciarDeambular(participanteId, contenido, sprite) {
       // y viceversa — nunca "moonwalk".
       setDireccion(sprite, haciaIzquierda ? 'derecha' : 'izquierda');
       contenido.style.transition = `transform ${duracionPaso}ms ease-in-out`;
-      contenido.style.transform = 'translateX(0px)';
+      contenido.style.transform = 'translate(0px, 0px)';
 
       const quietoDeNuevo = setTimeout(() => {
         if (!document.body.contains(contenido)) return;
@@ -668,7 +771,7 @@ async function renderMapa() {
       } else {
         sprite.classList.add('avatar-sprite--idle');
         setDireccion(sprite, 'abajo');
-        iniciarDeambular(participante.id, contenido, sprite);
+        iniciarDeambular(participante, contenido, sprite);
       }
     } else if (cambioPuntos !== 0) {
       detenerDeambular(participante.id);

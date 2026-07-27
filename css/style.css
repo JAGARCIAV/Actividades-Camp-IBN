@@ -317,7 +317,7 @@ button {
    de quien ya llegó a la meta. */
 @keyframes spriteCelebrar {
   from { background-position-x: 0px; }
-  to { background-position-x: -80px; }
+  to { background-position-x: -120px; }
 }
 .avatar-sprite--celebrando {
   animation: spriteCelebrar 0.9s steps(3) infinite;

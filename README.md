@@ -139,17 +139,27 @@ un pin con foto), con tres comportamientos:
 - **Parado / deambulando**: mientras no le cambian los puntos, de vez en
   cuando (en un momento aleatorio, distinto por persona) camina unos pasos
   hacia un lado y vuelve a su línea, como si explorara alrededor de su
-  lugar en el camino.
+  lugar en el camino. La distancia que puede caminar no es fija: usa el
+  **ancho real del camino de tierra dibujado en `assets/mapa.png`** en ese
+  punto exacto (array `ANCHO_CAMINO` en `js/app.js`, extraído analizando
+  los píxeles de la imagen igual que `PATH_POINTS`), así que en los tramos
+  anchos explora bastante y en los angostos se queda más cerca de su
+  línea — nunca se sale del camino dibujado. Se mueve en la dirección
+  perpendicular real al camino en ese punto (no solo hacia los lados de
+  la pantalla), y la distancia se escala según el tamaño en el que se ve
+  el mapa en cada dispositivo.
 - **Caminando hacia su nueva posición**: en cuanto le cambian los puntos,
   vuelve primero a su línea (si estaba deambulando) y después camina de
   verdad, en cámara lenta, desde donde está hasta su nueva posición sobre
-  el camino — la velocidad es fija: **cada 100 puntos de diferencia son 30
-  segundos caminando** (`MS_POR_CADA_100_PUNTOS` en `js/app.js`).
+  el camino, mirando hacia el campamento si sube y hacia el inicio si
+  baja — la velocidad es fija: **cada 1000 puntos de diferencia son 10
+  segundos caminando** (`MS_POR_CADA_1000_PUNTOS` en `js/app.js`).
 - **Celebrando**: al llegar a la meta (`CONFIG.META_PUNTOS`), en vez de
-  quedar parado se queda saltando con los brazos arriba, como festejando.
-  Todos los que ya llegaron se agrupan cerca de la puerta del campamento
-  (no seguían su carril ahí: justo en ese tramo el camino es muy diagonal,
-  y el carril los mandaba fuera de la imagen, hacia el cielo).
+  quedar parado alterna sin parar entre festejar con los brazos arriba y
+  caminar un poco de lado a lado en su zona de la meta. Todos los que ya
+  llegaron se agrupan cerca de la puerta del campamento (no seguían su
+  carril ahí: justo en ese tramo el camino es muy diagonal, y el carril
+  los mandaba fuera de la imagen, hacia el cielo).
 
 - Las hojas de sprites están en `assets/sprites/` — una imagen compacta por
   género y color de participante (`masculino-{color}.png` /
