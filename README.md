@@ -123,11 +123,11 @@ es quién.
 
 ## Cómo se muestra el nombre
 
-- En el **mapa**, cada personaje solo muestra sus **iniciales** (letra del
-  nombre + letra del "segundo nombre o apellido", ej. "Jose Armando" → "JA")
-  — deja más espacio libre en el camino.
-- En el **ranking**, se muestra "Nombre + inicial del último apellido"
-  (ej. "Jose G."), para identificar mejor a cada quien en esa lista.
+- En el **mapa**, cada personaje muestra "primer nombre + inicial del
+  primer apellido" (ej. "Jose Armando García Vallejos" → "Jose G.",
+  función `primerNombreYApellido` en `js/app.js`; asume la convención de
+  nombre(s) + 2 apellidos al final).
+- En el **ranking**, se muestra el nombre completo tal cual se guardó.
 - En el **admin**, siempre se ve y edita el nombre completo tal cual se
   guardó.
 
@@ -144,14 +144,13 @@ un pin con foto), con tres comportamientos:
   quedar alejado de su línea por un buen rato. Al llegar a cada punto se
   detiene un momento y "mira" hacia ambos lados antes de decidir el
   siguiente paso (array `derivasDeambular` en `js/app.js`, que guarda
-  cuánto se alejó cada quien de su línea). La distancia de cada paso no es
-  fija: usa el **ancho real del camino de tierra dibujado en
-  `assets/mapa.png`** en ese punto exacto (array `ANCHO_CAMINO` en
-  `js/app.js`, extraído analizando los píxeles de la imagen igual que
-  `PATH_POINTS`), calculado desde donde está parado ahora mismo (no desde
-  su línea), así que en los tramos anchos explora bastante y en los
-  angostos se queda más cerca del centro — nunca se sale del camino
-  dibujado. El movimiento en sí es siempre horizontal puro en pantalla
+  cuánto se alejó cada quien de su línea). El límite para no salirse es
+  sobre la **imagen completa** (no sobre el ancho del camino de tierra):
+  nunca puede pisar fuera del **70% central del ancho de
+  `assets/mapa.png`** (15% de margen fijo a cada lado), calculado desde
+  donde está parado ahora mismo (no desde su línea) — así que sin
+  importar cuánto lleve deambulando o dónde caiga su carril, nunca
+  termina fuera de la imagen. El movimiento en sí es siempre horizontal puro en pantalla
   (izquierda/derecha): el personaje solo tiene cuadros de perfil
   izquierdo/derecho, así que moverlo en diagonal (siguiendo la
   perpendicular real del camino) se veía como si "subiera o bajara de

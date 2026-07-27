@@ -153,7 +153,7 @@ function crearFilaActividad(actividad) {
         <input type="number" min="0" class="input-actividad-puntos" />
       </div>
     </div>
-    <div class="fila">
+    <div class="fila fila--fechas">
       <div class="campo">
         <label>Inicio (opcional)</label>
         <input type="datetime-local" class="input-actividad-inicio" />

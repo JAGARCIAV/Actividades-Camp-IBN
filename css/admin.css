@@ -207,6 +207,19 @@ body {
   min-width: 140px;
 }
 
+/* Los <input type="datetime-local"> traen su propio mini-teclado interno
+   (día/mes/año, hora/minuto) que necesita bastante ancho: apretados a
+   ~140px en modo teléfono se veían recortados y desalineados entre sí.
+   En mobile van uno debajo del otro (ancho completo cada uno) y recién
+   en pantallas más grandes (ver media query más abajo) van lado a lado. */
+.fila--fechas {
+  flex-direction: column;
+}
+
+.fila--fechas .campo {
+  min-width: 0;
+}
+
 .aviso-guardado {
   font-size: 0.8rem;
   font-weight: 700;
@@ -402,5 +415,8 @@ body {
   }
   .participante-admin-acciones {
     grid-column: auto;
+  }
+  .fila--fechas {
+    flex-direction: row;
   }
 }

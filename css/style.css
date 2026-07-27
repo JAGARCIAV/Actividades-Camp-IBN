@@ -236,6 +236,26 @@ button {
   inset: 0;
 }
 
+/* Muros de depuración del deambular: marcan el 15% / 85% del ancho de
+   la imagen (el límite que no deberían cruzar al deambular). Ocultos
+   por defecto; ver MOSTRAR_MUROS_DEAMBULAR_DEBUG en js/app.js. */
+.mapa-muro-deambular {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: rgba(255, 0, 60, 0.8);
+  z-index: 4;
+  pointer-events: none;
+  display: none;
+}
+.mapa-muro-deambular--izquierda { left: 15%; }
+.mapa-muro-deambular--derecha { left: 85%; }
+
+.mapa-wrapper--debug-muros .mapa-muro-deambular {
+  display: block;
+}
+
 /* Líneas de depuración de los 12 carriles (ver MOSTRAR_CARRILES_DEBUG
    en js/app.js). No reciben clics: son solo para verificar visualmente
    que siguen bien las curvas del camino. */
@@ -351,7 +371,7 @@ button {
 }
 
 .avatar-etiqueta__nombre {
-  max-width: 26px;
+  max-width: 76px;
   overflow: hidden;
   text-overflow: ellipsis;
 }

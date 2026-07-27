@@ -153,6 +153,17 @@ function offsetDeLane(lane) {
 // que ni el público ni el admin las vean.
 const MOSTRAR_CARRILES_DEBUG = false;
 
+// Poner en `false` (o directamente bajar la opacidad en style.css) una
+// vez confirmado que nadie cruza el 15%/85% al deambular. TEMPORAL:
+// mientras esté en `true`, se ven 2 líneas rojas verticales marcando
+// ese límite, para comprobar en vivo si algún avatar las cruza.
+const MOSTRAR_MUROS_DEAMBULAR_DEBUG = true;
+
+function aplicarDebugMurosDeambular() {
+  const wrapper = document.getElementById('mapaWrapper');
+  if (wrapper) wrapper.classList.toggle('mapa-wrapper--debug-muros', MOSTRAR_MUROS_DEAMBULAR_DEBUG);
+}
+
 /** Dibuja los 12 carriles como líneas de colores, para verificar que
  *  sigan bien las curvas del camino (no se usa para nada más). */
 function dibujarLineasCarriles() {
@@ -375,6 +386,17 @@ function obtenerIniciales(nombre) {
     .slice(0, 2)
     .map((p) => p[0].toUpperCase())
     .join('');
+}
+
+/** Primer nombre + inicial del primer apellido (ej. "Jose Armando García
+ *  Vallejos" -> "Jose G."), para la etiqueta de cada avatar en el mapa.
+ *  Asume la convención de nombre(s) + 2 apellidos al final; si el nombre
+ *  tiene 1 o 2 palabras, usa lo que haya sin inventar nada. */
+function primerNombreYApellido(nombre) {
+  const partes = nombre.trim().split(/\s+/).filter(Boolean);
+  if (partes.length <= 1) return partes[0] || '';
+  const apellido = partes.length >= 3 ? partes[partes.length - 2] : partes[partes.length - 1];
+  return `${partes[0]} ${apellido[0].toUpperCase()}.`;
 }
 
 /** Crea el <img>/iniciales de un avatar con fallback si la foto no carga o no existe. */
@@ -600,9 +622,10 @@ function detenerCicloGanador(participanteId) {
  * decidir el siguiente paso. Solo vuelve a su línea cuando le toca
  * subir/bajar de verdad (ver el manejo de `cambioPuntos` en
  * `renderMapa`), sin importar qué tan lejos haya quedado deambulando.
- * Usa el ANCHO REAL del camino de tierra en ese punto (ANCHO_CAMINO)
- * para calcular cuánto espacio le queda desde donde está parado ahora
- * (no desde su línea), así que nunca se sale del camino dibujado.
+ * El límite para no salirse es sobre la IMAGEN completa (no sobre el
+ * camino de tierra): nunca puede pisar fuera del 70% central del
+ * ancho de `assets/mapa.png` (15% de margen fijo a cada lado), sin
+ * importar dónde caiga su línea ni cuánto se haya desviado ya.
  * Cada quien tiene su propio ritmo aleatorio, para que no se vean
  * todos moviéndose sincronizados.
  */
@@ -645,24 +668,40 @@ function iniciarDeambular(participante, contenido, sprite) {
     const progreso = participante.puntos / CONFIG.META_PUNTOS;
     const lane = participante.lane || (hashTexto(participante.id) % LANE_COUNT) + 1;
     const offsetActual = offsetDeLane(lane);
-    const ancho = anchoDelCaminoEn(progreso);
 
-    // Dónde está parado AHORA respecto al centro del camino (su línea
-    // + lo que ya se haya alejado en pasos anteriores), para calcular
-    // el espacio libre desde ahí y no desde su línea.
+    // Posición X nativa (en la imagen completa) de SU línea: el punto
+    // del camino en ese progreso, desplazado por su carril.
+    const { x: xCamino, ty } = puntoYTangenteEnCamino(progreso);
+    const xLineaNativo = xCamino + -ty * offsetActual;
+
+    // Dónde está parado AHORA en esa misma escala (su línea + lo que
+    // ya se haya alejado en pasos anteriores), para calcular el
+    // espacio libre desde ahí y no desde su línea.
     const derivaActual = derivasDeambular.get(participanteId) || 0;
-    const posicionActual = offsetActual + derivaActual;
+    const xActualNativo = xLineaNativo + derivaActual;
 
-    const espacioIzquierda = Math.max(6, (ancho.izquierda - posicionActual) * 0.85);
-    const espacioDerecha = Math.max(6, (ancho.derecha + posicionActual) * 0.85);
+    // "Muro" real sobre la IMAGEN completa (no sobre el camino de
+    // tierra): nunca puede pisar fuera del 70% central del ancho de
+    // assets/mapa.png, sin importar dónde caiga su línea ni cuánto se
+    // haya desviado ya en pasos anteriores.
+    const limiteIzquierda = MAPA_TAMANO.ancho * 0.15;
+    const limiteDerecha = MAPA_TAMANO.ancho * 0.85;
+    const espacioIzquierda = Math.max(6, xActualNativo - limiteIzquierda);
+    const espacioDerecha = Math.max(6, limiteDerecha - xActualNativo);
 
     const haciaIzquierda = Math.random() < 0.5;
     const distanciaNativa = 6 + Math.random() * (haciaIzquierda ? espacioIzquierda : espacioDerecha);
-    const nuevaDeriva = derivaActual + (haciaIzquierda ? -distanciaNativa : distanciaNativa);
+    const xDeseadoNativo = Math.min(
+      limiteDerecha,
+      Math.max(limiteIzquierda, xActualNativo + (haciaIzquierda ? -distanciaNativa : distanciaNativa)),
+    );
+
+    const nuevaDeriva = xDeseadoNativo - xLineaNativo;
     derivasDeambular.set(participanteId, nuevaDeriva);
 
     const dx = nuevaDeriva * escalaMapaActual();
-    const duracionPaso = duracionParaDistanciaDeambular(distanciaNativa * escalaMapaActual());
+    const distanciaRecorrida = Math.abs(xDeseadoNativo - xActualNativo);
+    const duracionPaso = duracionParaDistanciaDeambular(distanciaRecorrida * escalaMapaActual());
 
     sprite.classList.remove('avatar-sprite--idle');
     sprite.classList.add('avatar-sprite--caminando');
@@ -771,7 +810,7 @@ async function renderMapa() {
 
       const nombreSpan = document.createElement('span');
       nombreSpan.className = 'avatar-etiqueta__nombre';
-      nombreSpan.textContent = obtenerIniciales(participante.nombre);
+      nombreSpan.textContent = primerNombreYApellido(participante.nombre);
 
       const puntosSpan = document.createElement('span');
       puntosSpan.className = 'avatar-etiqueta__puntos';
@@ -782,7 +821,7 @@ async function renderMapa() {
       el.appendChild(contenido);
       capa.appendChild(el);
     } else {
-      el.querySelector('.avatar-etiqueta__nombre').textContent = obtenerIniciales(participante.nombre);
+      el.querySelector('.avatar-etiqueta__nombre').textContent = primerNombreYApellido(participante.nombre);
       el.querySelector('.avatar-etiqueta__puntos').textContent = participante.puntos;
       const sprite = el.querySelector('.avatar-sprite');
       const nuevaUrl = spriteUrl(participante);
@@ -999,6 +1038,7 @@ async function iniciar() {
   await DataService.init();
   cargarLogo();
   dibujarLineasCarriles();
+  aplicarDebugMurosDeambular();
   await renderTodo();
 
   // Firestore avisa en tiempo real cuando cambian los datos, sin
