@@ -153,11 +153,10 @@ function offsetDeLane(lane) {
 // que ni el público ni el admin las vean.
 const MOSTRAR_CARRILES_DEBUG = false;
 
-// Poner en `false` (o directamente bajar la opacidad en style.css) una
-// vez confirmado que nadie cruza el 15%/85% al deambular. TEMPORAL:
-// mientras esté en `true`, se ven 2 líneas rojas verticales marcando
-// ese límite, para comprobar en vivo si algún avatar las cruza.
-const MOSTRAR_MUROS_DEAMBULAR_DEBUG = true;
+// Poner en `true` para volver a ver las 2 líneas rojas verticales que
+// marcan el límite del 15%/85% del deambular (para comprobar en vivo
+// si algún avatar las cruza). Queda apagado para que no se vean.
+const MOSTRAR_MUROS_DEAMBULAR_DEBUG = false;
 
 function aplicarDebugMurosDeambular() {
   const wrapper = document.getElementById('mapaWrapper');
