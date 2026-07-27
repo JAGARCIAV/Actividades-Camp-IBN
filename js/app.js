@@ -262,6 +262,23 @@ function escalaMapaActual() {
   return wrapper.clientWidth / MAPA_TAMANO.ancho;
 }
 
+/**
+ * Ritmo de caminata al deambular (tanto parado en el camino como en la
+ * meta): píxeles de pantalla por segundo. Antes cada paso duraba un
+ * tiempo fijo (900-1600ms) sin importar la distancia — se veía bien
+ * con distancias chicas y fijas, pero al hacer que la distancia varíe
+ * según el ancho real del camino (a veces mucho más grande), la MISMA
+ * duración corta para una distancia más larga se veía como si
+ * corriera en vez de caminar. Ahora la duración se calcula a partir de
+ * la distancia, para que la velocidad sea siempre la misma.
+ */
+const VELOCIDAD_DEAMBULAR_PX_SEG = 16;
+
+function duracionParaDistanciaDeambular(distanciaPx) {
+  const ms = (Math.abs(distanciaPx) / VELOCIDAD_DEAMBULAR_PX_SEG) * 1000;
+  return Math.min(4000, Math.max(500, ms));
+}
+
 // Margen de seguridad para que ningún avatar quede tapado por el borde
 // de la imagen o le "corten los pies".
 const MARGEN_BORDE_PX = 23;
@@ -599,7 +616,7 @@ function iniciarDeambular(participante, contenido, sprite) {
     const haciaIzquierda = Math.random() < 0.5;
     const distanciaNativa = 6 + Math.random() * (haciaIzquierda ? espacioIzquierda : espacioDerecha);
     const dx = (haciaIzquierda ? -1 : 1) * distanciaNativa * escalaMapaActual();
-    const duracionPaso = 900 + Math.random() * 500;
+    const duracionPaso = duracionParaDistanciaDeambular(dx);
 
     sprite.classList.remove('avatar-sprite--idle');
     sprite.classList.add('avatar-sprite--caminando');
@@ -652,14 +669,15 @@ function iniciarCicloGanador(participanteId, contenido, sprite) {
     if (!document.body.contains(contenido)) return;
     const haciaIzquierda = Math.random() < 0.5;
     const distancia = 12 + Math.random() * 16;
-    const duracionPaso = 1000 + Math.random() * 600;
+    const dx = (haciaIzquierda ? -1 : 1) * distancia;
+    const duracionPaso = duracionParaDistanciaDeambular(dx);
 
     sprite.classList.remove('avatar-sprite--celebrando');
     sprite.classList.add('avatar-sprite--caminando');
     setDireccion(sprite, haciaIzquierda ? 'izquierda' : 'derecha');
 
     contenido.style.transition = `transform ${duracionPaso}ms ease-in-out`;
-    contenido.style.transform = `translateX(${haciaIzquierda ? -distancia : distancia}px)`;
+    contenido.style.transform = `translateX(${dx}px)`;
 
     timersGanador.set(
       participanteId,
