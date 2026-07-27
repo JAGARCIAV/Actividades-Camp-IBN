@@ -287,8 +287,12 @@ function escalaMapaActual() {
 const VELOCIDAD_DEAMBULAR_PX_SEG = 16;
 
 function duracionParaDistanciaDeambular(distanciaPx) {
+  // Sin tope máximo: un tope fijo hacía que, en tramos largos, la
+  // duración dejara de crecer con la distancia y la velocidad efectiva
+  // aumentara (mismo tiempo, más distancia recorrida). El mínimo sí se
+  // mantiene para que los pasos muy cortos no se vean demasiado bruscos.
   const ms = (Math.abs(distanciaPx) / VELOCIDAD_DEAMBULAR_PX_SEG) * 1000;
-  return Math.min(4000, Math.max(500, ms));
+  return Math.max(500, ms);
 }
 
 // Margen de seguridad para que ningún avatar quede tapado por el borde
