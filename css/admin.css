@@ -380,6 +380,15 @@ body {
   max-width: 140px;
 }
 
+.select-genero {
+  font-size: 0.8rem;
+  padding: 6px 8px;
+  border-radius: var(--radio-sm);
+  border: 2px solid #e0e8e3;
+  background: #fff;
+  color: var(--verde-900);
+}
+
 .lista-vacia-admin {
   color: var(--texto-suave);
   font-size: 0.85rem;

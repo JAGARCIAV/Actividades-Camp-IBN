@@ -139,19 +139,21 @@ pequeño "mirar a los lados" ocasional) el resto del tiempo, y se sienta al
 llegar a la meta.
 
 - Las hojas de sprites están en `assets/sprites/` — una imagen compacta por
-  color de participante (`masculino-{color}.png`, sin el `#`), generada a
-  partir de `assets/sprites/originales/masculino.png` (una spritesheet
-  estilo LPC). Cada imagen ya trae la polera pintada del color exacto de
-  ese participante — no se recolorea en el navegador, así que no hay que
+  género y color de participante (`masculino-{color}.png` /
+  `femenino-{color}.png`, sin el `#`), generadas a partir de
+  `assets/sprites/originales/{masculino,femenino}.png` (spritesheets estilo
+  LPC). Cada imagen ya trae la polera pintada del color exacto de ese
+  participante — no se recolorea en el navegador, así que no hay que
   procesar nada en vivo.
-- Solo existe la versión **masculina** por ahora. Cuando se agregue la
-  femenina (`assets/sprites/originales/femenino.png`, misma estructura),
-  falta: 1) un campo `genero` por participante (en Firestore/admin), y
-  2) que `spriteUrl()` en `js/app.js` elija `masculino-` o `femenino-`
-  según ese campo.
+- Cada participante tiene un campo **`genero`** (`"masculino"` o
+  `"femenino"`), elegido al crearlo desde el admin (por defecto "Hombre" si
+  no se cambia) y editable después con el selector que aparece junto a sus
+  puntos en la lista de participantes del admin. `spriteUrl()` en
+  `js/app.js` usa ese campo para elegir qué hoja de sprites mostrar.
 - Si se agrega un color de participante que no tenga su archivo generado en
-  `assets/sprites/`, hay que regenerarlo (ver el proceso de recolor por
-  matiz usado para los actuales, en el historial de cambios).
+  `assets/sprites/` (para alguno de los dos géneros), hay que regenerarlo
+  (ver el proceso de recolor por matiz usado para los actuales, en el
+  historial de cambios).
 
 ## Fotografías de participantes
 

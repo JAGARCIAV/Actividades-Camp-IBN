@@ -192,7 +192,7 @@ async function eliminarActividad(id) {
 async function getParticipantes() {
   await initSiHaceFalta();
   const snap = await getDocs(collection(db, PARTICIPANTES_COL));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snap.docs.map((d) => ({ id: d.id, genero: 'masculino', ...d.data() }));
 }
 
 /** Guarda la lista completa de participantes (reemplaza uno por uno). */
@@ -210,11 +210,13 @@ async function saveParticipantes(lista) {
 /**
  * Agrega un participante nuevo, asignándole su carril fijo (a menos
  * que ya venga uno explícito). Ese carril nunca vuelve a cambiar.
+ * El género (masculino/femenino) decide qué personaje usa en el mapa;
+ * por defecto es "masculino" si no se especifica.
  */
 async function addParticipante(participante) {
   await initSiHaceFalta();
   const id = participante.id || 'p' + Date.now();
-  const { id: _ignorar, lane: laneExplicito, ...datos } = participante;
+  const { id: _ignorar, lane: laneExplicito, genero, ...datos } = participante;
 
   let lane = laneExplicito;
   if (!lane) {
@@ -223,7 +225,7 @@ async function addParticipante(participante) {
     lane = calcularSiguienteLane(lanesUsados, existentes.length);
   }
 
-  await setDoc(doc(db, PARTICIPANTES_COL, id), { ...datos, lane });
+  await setDoc(doc(db, PARTICIPANTES_COL, id), { ...datos, lane, genero: genero || 'masculino' });
   return getParticipantes();
 }
 

@@ -381,10 +381,11 @@ setInterval(actualizarCronometros, 1000);
 // de parpadeo, cuando 2 o más comparten el mismo punto del camino.
 const TIEMPO_PARPADEO_POR_NOMBRE = 1;
 
-/** Ruta de la spritesheet compacta según el color del participante. */
+/** Ruta de la spritesheet compacta según el género y color del participante. */
 function spriteUrl(participante) {
+  const genero = participante.genero === 'femenino' ? 'femenino' : 'masculino';
   const color = (participante.color || '#4D96FF').replace('#', '').toLowerCase();
-  return `assets/sprites/masculino-${color}.png`;
+  return `assets/sprites/${genero}-${color}.png`;
 }
 
 // Recuerda el último puntaje pintado de cada participante para saber si

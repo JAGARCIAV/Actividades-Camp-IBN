@@ -286,6 +286,7 @@ function configurarFormNuevoParticipante() {
     e.preventDefault();
     const nombre = document.getElementById('inputNuevoNombre').value.trim();
     const puntos = parseInt(document.getElementById('inputNuevoPuntos').value, 10) || 0;
+    const genero = document.getElementById('inputNuevoGenero').value;
     const archivo = document.getElementById('inputNuevoFoto').files[0];
     if (!nombre) return;
 
@@ -294,6 +295,7 @@ function configurarFormNuevoParticipante() {
       await DataService.addParticipante({
         nombre,
         puntos,
+        genero,
         foto,
         color: colorAleatorio(),
       });
@@ -418,9 +420,14 @@ async function renderParticipantes() {
           <span>${participante.puntos} pts</span>
           <button type="button" data-accion="sumar" title="Sumar 5 puntos">+</button>
         </div>
+        <select class="select-genero" title="Género">
+          <option value="masculino">Hombre</option>
+          <option value="femenino">Mujer</option>
+        </select>
         <input type="file" class="input-foto" accept="image/*" title="Cambiar foto" />
         <button type="button" class="btn btn-peligro btn-sm" data-accion="eliminar">Eliminar</button>
       `;
+      acciones.querySelector('.select-genero').value = participante.genero === 'femenino' ? 'femenino' : 'masculino';
       acciones.insertBefore(crearCumplidos(participante, actividades), acciones.querySelector('.input-foto'));
 
       li.appendChild(fotoWrap);
@@ -433,6 +440,11 @@ async function renderParticipantes() {
       inputNombre.addEventListener('change', async () => {
         const nuevoNombre = inputNombre.value.trim();
         if (nuevoNombre) await DataService.updateParticipante(participante.id, { nombre: nuevoNombre });
+      });
+
+      acciones.querySelector('.select-genero').addEventListener('change', async (e) => {
+        await DataService.updateParticipante(participante.id, { genero: e.target.value });
+        await renderParticipantes();
       });
 
       acciones.querySelector('[data-accion="sumar"]').addEventListener('click', async () => {
