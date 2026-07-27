@@ -377,10 +377,6 @@ setInterval(actualizarCronometros, 1000);
  * 4) RENDER: MAPA CON PARTICIPANTES
  * ------------------------------------------------------------------ */
 
-// Recuerda el último puntaje pintado de cada participante para detectar
-// aumentos y disparar la animación de "boost" al llegar a su nueva posición.
-const ultimosPuntos = new Map();
-
 // Cuántos segundos dura el turno de cada participante dentro del ciclo
 // de parpadeo, cuando 2 o más comparten el mismo punto del camino.
 const TIEMPO_PARPADEO_POR_NOMBRE = 1;
@@ -389,8 +385,7 @@ async function renderMapa() {
   const participantes = await DataService.getParticipantes();
   const capa = document.getElementById('capaParticipantes');
 
-  // Sincroniza elementos existentes en vez de recrear todo el DOM,
-  // así las transiciones CSS de left/top se animan correctamente.
+  // Sincroniza elementos existentes en vez de recrear todo el DOM.
   const idsActuales = new Set(participantes.map((p) => p.id));
 
   // Elimina avatares de participantes que ya no existen.
@@ -405,17 +400,14 @@ async function renderMapa() {
   participantes.forEach((participante) => {
     const pos = posiciones.get(participante.id);
     let el = capa.querySelector(`.avatar-participante[data-id="${participante.id}"]`);
-    const subioPuntos =
-      ultimosPuntos.has(participante.id) && participante.puntos > ultimosPuntos.get(participante.id);
 
     if (!el) {
       el = document.createElement('div');
       el.className = 'avatar-participante';
       el.dataset.id = participante.id;
 
-      // avatar-contenido envuelve todo lo visual (ícono + nombre + puntos)
-      // separado del posicionamiento (que vive en .avatar-participante),
-      // para poder aplicarle un zoom sin pelear con la posición sobre el mapa.
+      // avatar-contenido envuelve todo lo visual (ícono + nombre + puntos),
+      // separado del posicionamiento (que vive en .avatar-participante).
       const contenido = document.createElement('div');
       contenido.className = 'avatar-contenido';
 
@@ -459,37 +451,28 @@ async function renderMapa() {
 
     // Si 2 o más participantes coinciden en el mismo punto del camino,
     // su nombre y sus puntos no caben a la vez: en su lugar, cada uno
-    // "parpadea" por turnos (nombre + puntos juntos) y su ícono se
-    // agranda momentáneamente, para que se note de quién es el turno.
+    // "parpadea" por turnos (nombre + puntos juntos), para que se
+    // alcancen a leer todos sin amontonarse.
     const infoRacimo = racimos.get(participante.id);
-    const contenido = el.querySelector('.avatar-contenido');
     const nombreSpan = el.querySelector('.avatar-nombre');
     const puntosSpan = el.querySelector('.avatar-puntos');
     if (infoRacimo && infoRacimo.tamano >= 2) {
       const duracion = infoRacimo.tamano * TIEMPO_PARPADEO_POR_NOMBRE;
       const retraso = `-${infoRacimo.turno * TIEMPO_PARPADEO_POR_NOMBRE}s`;
 
-      // El z-index se anima en el elemento de AFUERA (.avatar-participante,
-      // que es el que compite en altura con los demás avatares del mapa),
-      // para que mientras uno hace zoom quede por encima de sus vecinos y,
-      // al terminar su turno, vuelva a su altura normal.
-      [el, nombreSpan, puntosSpan, contenido].forEach((elemento) => {
+      [nombreSpan, puntosSpan].forEach((elemento) => {
         elemento.style.animationDuration = `${duracion}s`;
         elemento.style.animationDelay = retraso;
       });
-      el.classList.add('avatar-participante--parpadeo');
       nombreSpan.classList.add('avatar-nombre--parpadeo');
       puntosSpan.classList.add('avatar-puntos--parpadeo');
-      contenido.classList.add('avatar-contenido--parpadeo');
     } else {
-      [el, nombreSpan, puntosSpan, contenido].forEach((elemento) => {
+      [nombreSpan, puntosSpan].forEach((elemento) => {
         elemento.style.animationDuration = '';
         elemento.style.animationDelay = '';
       });
-      el.classList.remove('avatar-participante--parpadeo');
       nombreSpan.classList.remove('avatar-nombre--parpadeo');
       puntosSpan.classList.remove('avatar-puntos--parpadeo');
-      contenido.classList.remove('avatar-contenido--parpadeo');
     }
 
     // Al llegar a la meta (CONFIG.META_PUNTOS), el pin se marca como
@@ -498,14 +481,6 @@ async function renderMapa() {
 
     el.style.left = `${pos.x}%`;
     el.style.top = `${pos.y}%`;
-
-    if (subioPuntos) {
-      el.classList.remove('avatar-boost');
-      void el.offsetWidth; // fuerza reinicio de animación
-      el.classList.add('avatar-boost');
-    }
-
-    ultimosPuntos.set(participante.id, participante.puntos);
   });
 }
 

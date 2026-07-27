@@ -243,51 +243,16 @@ button {
 .avatar-participante {
   position: absolute;
   transform: translate(-50%, -100%);
-  transition: left 1.4s cubic-bezier(0.34, 1.2, 0.4, 1), top 1.4s cubic-bezier(0.34, 1.2, 0.4, 1);
   z-index: 5;
-  animation: aparecer 0.5s ease both;
-}
-
-/* Mientras le toca su turno de parpadeo, el avatar sube de z-index
-   para quedar por encima de sus vecinos (que están muy juntos), y al
-   terminar su turno vuelve a su altura normal en la pila. */
-.avatar-participante--parpadeo {
-  animation-name: zIndexParpadeo;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-}
-
-@keyframes zIndexParpadeo {
-  0% { z-index: 5; }
-  8% { z-index: 60; }
-  70% { z-index: 60; }
-  85% { z-index: 5; }
-  100% { z-index: 5; }
 }
 
 /* Envuelve ícono + nombre + puntos, separado del posicionamiento de
-   .avatar-participante, para poder animarle un zoom (transform: scale)
-   sin pisar el transform de posición del elemento de afuera. */
+   .avatar-participante. */
 .avatar-contenido {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  transform-origin: bottom center;
-}
-
-.avatar-contenido--parpadeo {
-  animation-name: zoomParpadeo;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-}
-
-@keyframes zoomParpadeo {
-  0% { transform: scale(1); }
-  8% { transform: scale(1.35); }
-  70% { transform: scale(1.35); }
-  85% { transform: scale(1); }
-  100% { transform: scale(1); }
 }
 
 /* --------------------------------------------------------------------------
@@ -301,7 +266,6 @@ button {
   position: relative;
   width: 31px;
   height: 31px;
-  animation: flotar 2.6s ease-in-out infinite;
 }
 
 /* El pin en sí: un cuadrado con 3 esquinas redondeadas y 1 recta,
@@ -393,45 +357,6 @@ button {
   border-radius: 999px;
 }
 
-/* Efecto al recibir puntos / avanzar */
-.avatar-participante.avatar-boost .avatar-pin-holder {
-  animation: boost 0.9s ease;
-}
-
-.avatar-participante.avatar-boost::after {
-  content: "✨";
-  position: absolute;
-  top: -14px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 1.1rem;
-  animation: chispa 0.9s ease forwards;
-  pointer-events: none;
-}
-
-@keyframes flotar {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-
-@keyframes boost {
-  0% { transform: scale(1); }
-  30% { transform: scale(1.35); }
-  60% { transform: scale(0.95); }
-  100% { transform: scale(1); }
-}
-
-@keyframes chispa {
-  0% { opacity: 0; transform: translate(-50%, 6px) scale(0.6); }
-  40% { opacity: 1; }
-  100% { opacity: 0; transform: translate(-50%, -18px) scale(1.2); }
-}
-
-@keyframes aparecer {
-  from { opacity: 0; transform: translate(-50%, -100%) scale(0.6); }
-  to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
-}
-
 /* --------------------------------------------------------------------------
    GANADOR: participante que llegó a la meta (CONFIG.META_PUNTOS)
    -------------------------------------------------------------------------- */
@@ -439,10 +364,6 @@ button {
 .avatar-participante--ganador .avatar-pin {
   box-shadow: 0 0 0 3px var(--acento-oro), 0 4px 14px rgba(0, 0, 0, 0.4);
   animation: brilloGanador 1.6s ease-in-out infinite;
-}
-
-.avatar-participante--ganador .avatar-pin-holder {
-  animation: flotar 2.6s ease-in-out infinite, brilloGanadorEscala 1.6s ease-in-out infinite;
 }
 
 .avatar-participante--ganador::before {
@@ -458,11 +379,6 @@ button {
 @keyframes brilloGanador {
   0%, 100% { box-shadow: 0 0 0 3px var(--acento-oro), 0 4px 14px rgba(0, 0, 0, 0.4); }
   50% { box-shadow: 0 0 0 6px var(--acento-oro), 0 4px 18px rgba(0, 0, 0, 0.45); }
-}
-
-@keyframes brilloGanadorEscala {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.08); }
 }
 
 /* --------------------------------------------------------------------------
