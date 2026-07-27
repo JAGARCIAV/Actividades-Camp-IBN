@@ -93,10 +93,10 @@ progreso = puntos_del_participante / CONFIG.META_PUNTOS
 
 `CONFIG.META_PUNTOS` (en `js/app.js`) es el puntaje necesario para llegar
 al campamento (5000 por defecto). Al llegar a esa meta, el participante
-queda marcado visualmente como **ganador** (brillo dorado + 🏆 en su pin y
-en el ranking). Si tu campamento maneja otro rango de puntos, solo cambia
-ese número (cuanto más bajo, más rápido se ve a la gente repartida por
-todo el camino en vez de amontonada cerca de INICIO).
+queda marcado visualmente como **ganador** (brillo dorado + 🏆 en su
+personaje y en el ranking). Si tu campamento maneja otro rango de puntos,
+solo cambia ese número (cuanto más bajo, más rápido se ve a la gente
+repartida por todo el camino en vez de amontonada cerca de INICIO).
 
 Los 18 puntos de `PATH_POINTS` no son una estimación a ojo: se extrajeron
 analizando los píxeles reales de `assets/mapa.png` (detectando el color del
@@ -123,21 +123,43 @@ es quién.
 
 ## Cómo se muestra el nombre
 
-- En el **mapa**, cada avatar solo muestra sus **iniciales** (letra del nombre
-  + letra del "segundo nombre o apellido", ej. "Jose Armando" → "JA") —
-  como ahí ya se identifican por su foto y su color, no hace falta más, y
-  deja más espacio libre en el camino.
+- En el **mapa**, cada personaje solo muestra sus **iniciales** (letra del
+  nombre + letra del "segundo nombre o apellido", ej. "Jose Armando" → "JA")
+  — deja más espacio libre en el camino.
 - En el **ranking**, se muestra "Nombre + inicial del último apellido"
   (ej. "Jose G."), para identificar mejor a cada quien en esa lista.
 - En el **admin**, siempre se ve y edita el nombre completo tal cual se
   guardó.
 
+## Personaje animado (sprite) en el mapa
+
+Cada participante aparece en el mapa como un personaje tipo videojuego (no
+un pin con foto): camina cuando le suman puntos, se queda parado (con un
+pequeño "mirar a los lados" ocasional) el resto del tiempo, y se sienta al
+llegar a la meta.
+
+- Las hojas de sprites están en `assets/sprites/` — una imagen compacta por
+  color de participante (`masculino-{color}.png`, sin el `#`), generada a
+  partir de `assets/sprites/originales/masculino.png` (una spritesheet
+  estilo LPC). Cada imagen ya trae la polera pintada del color exacto de
+  ese participante — no se recolorea en el navegador, así que no hay que
+  procesar nada en vivo.
+- Solo existe la versión **masculina** por ahora. Cuando se agregue la
+  femenina (`assets/sprites/originales/femenino.png`, misma estructura),
+  falta: 1) un campo `genero` por participante (en Firestore/admin), y
+  2) que `spriteUrl()` en `js/app.js` elija `masculino-` o `femenino-`
+  según ese campo.
+- Si se agrega un color de participante que no tenga su archivo generado en
+  `assets/sprites/`, hay que regenerarlo (ver el proceso de recolor por
+  matiz usado para los actuales, en el historial de cambios).
+
 ## Fotografías de participantes
 
-Van en `assets/avatars/` o se suben directamente desde el panel admin
-(se guardan como `data:` URL dentro de Firestore). Si una foto no
-existe o no carga, automáticamente se muestran las iniciales del nombre
-sobre un círculo de color.
+Se usan en el **ranking** y en el **panel admin** (no en el mapa, que ahora
+usa el personaje animado). Se suben desde el panel admin y se guardan como
+`data:` URL dentro de Firestore. Si una foto no existe o no carga,
+automáticamente se muestran las iniciales del nombre sobre un círculo de
+color.
 
 ## Base de datos: Firebase Firestore
 

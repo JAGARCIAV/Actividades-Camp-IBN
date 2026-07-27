@@ -256,65 +256,62 @@ button {
 }
 
 /* --------------------------------------------------------------------------
-   PIN estilo GPS/ubicación (contiene la foto del participante)
+   PERSONAJE: sprite animado (caminar / parado-idle / sentado)
    -------------------------------------------------------------------------- */
 
-/* Caja "contenedora" del pin: su tamaño incluye la punta, así que su
-   borde inferior coincide exactamente con la punta del pin (ver la
-   matemática en el comentario de más abajo). */
-.avatar-pin-holder {
-  position: relative;
-  width: 31px;
-  height: 31px;
+/*
+ * Cada imagen (assets/sprites/masculino-{color}.png) es una hoja
+ * compacta de 9 columnas x 8 filas, cuadros de 64x64 px originales:
+ *   fila 0 = caminar arriba     fila 4 = sentarse arriba
+ *   fila 1 = caminar izquierda  fila 5 = sentarse izquierda
+ *   fila 2 = caminar abajo      fila 6 = sentarse abajo
+ *   fila 3 = caminar derecha    fila 7 = sentarse derecha
+ * (las filas de caminar tienen 9 cuadros; las de sentarse, 3).
+ * Se muestra cada cuadro a 40x40 px en pantalla (escalado desde 64x64).
+ */
+.avatar-sprite {
+  width: 40px;
+  height: 40px;
+  background-repeat: no-repeat;
+  background-size: 360px 320px; /* 9 columnas x 40px, 8 filas x 40px */
+  background-position-x: 0px;
+  background-position-y: -80px; /* fila 2: parado de frente */
+  image-rendering: pixelated;
 }
 
-/* El pin en sí: un cuadrado con 3 esquinas redondeadas y 1 recta,
-   rotado 45°, que da la clásica forma de gota/ubicación con la punta
-   hacia abajo. El cuadrado mide holder/√2 para que, tras rotarlo, su
-   punta quede justo en el borde inferior de .avatar-pin-holder. */
-.avatar-pin {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 22px;
-  height: 22px;
-  transform: translate(-50%, -50%) rotate(-45deg);
-  border-radius: 50% 50% 50% 0;
-  background: var(--avatar-color, var(--verde-500));
-  border: 1.5px solid #fff;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+/* Caminar: recorre los 9 cuadros de la fila "abajo" en bucle. */
+@keyframes spriteCaminar {
+  from { background-position-x: 0px; }
+  to { background-position-x: -360px; }
+}
+.avatar-sprite--caminando {
+  animation: spriteCaminar 0.8s steps(9) infinite;
 }
 
-/* Círculo con la foto, contra-rotado para que se vea derecho. */
-.avatar-pin-foto-wrap {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 14px;
-  height: 14px;
-  transform: translate(-50%, -50%) rotate(45deg);
-  border-radius: 50%;
-  overflow: hidden;
-  background: #fff;
+/* Sentarse: recorre los 3 cuadros de la fila "sentado abajo" UNA vez
+   y se queda en el último (ya sentado). */
+@keyframes spriteSentarse {
+  from { background-position-x: 0px; }
+  to { background-position-x: -80px; }
+}
+.avatar-sprite--sentado {
+  background-position-y: -240px; /* fila 6: sentado de frente */
+  animation: spriteSentarse 0.6s steps(3) forwards;
 }
 
-.avatar-foto {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+/* Parado (idle): de vez en cuando "mira" a los lados usando los
+   cuadros de pie de las filas izquierda/derecha, y vuelve de frente.
+   Cada personaje arranca en un momento distinto (retraso aleatorio
+   asignado en JS) para que no se muevan todos sincronizados. */
+@keyframes spriteIdle {
+  0%, 14% { background-position-y: -80px; }
+  18%, 28% { background-position-y: -40px; }
+  32%, 55% { background-position-y: -80px; }
+  60%, 70% { background-position-y: -120px; }
+  75%, 100% { background-position-y: -80px; }
 }
-
-.avatar-iniciales {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--avatar-color, var(--verde-500));
-  color: #fff;
-  font-weight: 800;
-  font-size: 0.32rem;
+.avatar-sprite--idle {
+  animation: spriteIdle 9s steps(1) infinite;
 }
 
 .avatar-nombre {
@@ -361,9 +358,8 @@ button {
    GANADOR: participante que llegó a la meta (CONFIG.META_PUNTOS)
    -------------------------------------------------------------------------- */
 
-.avatar-participante--ganador .avatar-pin {
-  box-shadow: 0 0 0 3px var(--acento-oro), 0 4px 14px rgba(0, 0, 0, 0.4);
-  animation: brilloGanador 1.6s ease-in-out infinite;
+.avatar-participante--ganador .avatar-sprite {
+  animation: spriteSentarse 0.6s steps(3) forwards, brilloGanador 1.6s ease-in-out infinite;
 }
 
 .avatar-participante--ganador::before {
@@ -376,9 +372,11 @@ button {
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35));
 }
 
+/* drop-shadow sigue la silueta transparente del sprite (no un cuadro),
+   así el brillo se ve alrededor del personaje y no de su recuadro. */
 @keyframes brilloGanador {
-  0%, 100% { box-shadow: 0 0 0 3px var(--acento-oro), 0 4px 14px rgba(0, 0, 0, 0.4); }
-  50% { box-shadow: 0 0 0 6px var(--acento-oro), 0 4px 18px rgba(0, 0, 0, 0.45); }
+  0%, 100% { filter: drop-shadow(0 0 3px var(--acento-oro)) drop-shadow(0 0 3px var(--acento-oro)); }
+  50% { filter: drop-shadow(0 0 7px var(--acento-oro)) drop-shadow(0 0 7px var(--acento-oro)); }
 }
 
 /* --------------------------------------------------------------------------

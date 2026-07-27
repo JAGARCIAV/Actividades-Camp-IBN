@@ -381,6 +381,19 @@ setInterval(actualizarCronometros, 1000);
 // de parpadeo, cuando 2 o más comparten el mismo punto del camino.
 const TIEMPO_PARPADEO_POR_NOMBRE = 1;
 
+/** Ruta de la spritesheet compacta según el color del participante. */
+function spriteUrl(participante) {
+  const color = (participante.color || '#4D96FF').replace('#', '').toLowerCase();
+  return `assets/sprites/masculino-${color}.png`;
+}
+
+// Recuerda el último puntaje pintado de cada participante para saber si
+// acaba de sumar puntos (y por lo tanto debe "caminar" hacia su nueva
+// posición). Guarda también el temporizador que lo devuelve a "parado".
+const ultimosPuntos = new Map();
+const timersCaminata = new Map();
+const TIEMPO_CAMINATA_MS = 1300;
+
 async function renderMapa() {
   const participantes = await DataService.getParticipantes();
   const capa = document.getElementById('capaParticipantes');
@@ -406,25 +419,17 @@ async function renderMapa() {
       el.className = 'avatar-participante';
       el.dataset.id = participante.id;
 
-      // avatar-contenido envuelve todo lo visual (ícono + nombre + puntos),
+      // avatar-contenido envuelve todo lo visual (personaje + nombre + puntos),
       // separado del posicionamiento (que vive en .avatar-participante).
       const contenido = document.createElement('div');
       contenido.className = 'avatar-contenido';
 
-      const holder = document.createElement('div');
-      holder.className = 'avatar-pin-holder';
-
-      const pin = document.createElement('div');
-      pin.className = 'avatar-pin';
-      pin.style.setProperty('--avatar-color', participante.color);
-
-      const fotoWrap = document.createElement('div');
-      fotoWrap.className = 'avatar-pin-foto-wrap';
-      fotoWrap.dataset.foto = participante.foto || '';
-      fotoWrap.appendChild(crearFotoElemento(participante, 'avatar-foto', 'avatar-iniciales'));
-
-      pin.appendChild(fotoWrap);
-      holder.appendChild(pin);
+      const sprite = document.createElement('div');
+      sprite.className = 'avatar-sprite avatar-sprite--idle';
+      sprite.style.backgroundImage = `url(${spriteUrl(participante)})`;
+      // Retraso aleatorio (pero estable por participante) para que el
+      // "mirar a los lados" de cada quien no quede sincronizado con los demás.
+      sprite.style.animationDelay = `-${(hashTexto(participante.id) % 900) / 100}s`;
 
       const nombreSpan = document.createElement('span');
       nombreSpan.className = 'avatar-nombre';
@@ -434,19 +439,43 @@ async function renderMapa() {
       puntosSpan.className = 'avatar-puntos';
       puntosSpan.textContent = `${participante.puntos} pts`;
 
-      contenido.append(holder, nombreSpan, puntosSpan);
+      contenido.append(sprite, nombreSpan, puntosSpan);
       el.appendChild(contenido);
       capa.appendChild(el);
     } else {
       el.querySelector('.avatar-nombre').textContent = obtenerIniciales(participante.nombre);
       el.querySelector('.avatar-puntos').textContent = `${participante.puntos} pts`;
-      el.querySelector('.avatar-pin').style.setProperty('--avatar-color', participante.color);
-      const fotoWrap = el.querySelector('.avatar-pin-foto-wrap');
-      if (fotoWrap.dataset.foto !== (participante.foto || '')) {
-        fotoWrap.dataset.foto = participante.foto || '';
-        fotoWrap.innerHTML = '';
-        fotoWrap.appendChild(crearFotoElemento(participante, 'avatar-foto', 'avatar-iniciales'));
+      const sprite = el.querySelector('.avatar-sprite');
+      const nuevaUrl = spriteUrl(participante);
+      if (!sprite.style.backgroundImage.includes(nuevaUrl)) {
+        sprite.style.backgroundImage = `url(${nuevaUrl})`;
       }
+    }
+
+    // Estado del personaje: "sentado" si ya ganó, "caminando" un ratito
+    // justo después de sumar puntos, y "parado" (idle) el resto del tiempo.
+    const sprite = el.querySelector('.avatar-sprite');
+    const yaGano = participante.puntos >= CONFIG.META_PUNTOS;
+    const subioPuntos = ultimosPuntos.has(participante.id) && participante.puntos > ultimosPuntos.get(participante.id);
+    ultimosPuntos.set(participante.id, participante.puntos);
+
+    if (yaGano) {
+      clearTimeout(timersCaminata.get(participante.id));
+      sprite.classList.remove('avatar-sprite--idle', 'avatar-sprite--caminando');
+      sprite.classList.add('avatar-sprite--sentado');
+    } else if (subioPuntos) {
+      sprite.classList.remove('avatar-sprite--idle');
+      sprite.classList.add('avatar-sprite--caminando');
+      clearTimeout(timersCaminata.get(participante.id));
+      timersCaminata.set(
+        participante.id,
+        setTimeout(() => {
+          sprite.classList.remove('avatar-sprite--caminando');
+          sprite.classList.add('avatar-sprite--idle');
+        }, TIEMPO_CAMINATA_MS)
+      );
+    } else if (!sprite.classList.contains('avatar-sprite--caminando') && !sprite.classList.contains('avatar-sprite--sentado')) {
+      sprite.classList.add('avatar-sprite--idle');
     }
 
     // Si 2 o más participantes coinciden en el mismo punto del camino,
@@ -475,8 +504,8 @@ async function renderMapa() {
       puntosSpan.classList.remove('avatar-puntos--parpadeo');
     }
 
-    // Al llegar a la meta (CONFIG.META_PUNTOS), el pin se marca como
-    // "ganador" con un brillo dorado y un trofeo.
+    // Al llegar a la meta (CONFIG.META_PUNTOS), el personaje se marca
+    // como "ganador" con un brillo dorado y un trofeo.
     el.classList.toggle('avatar-participante--ganador', participante.puntos >= CONFIG.META_PUNTOS);
 
     el.style.left = `${pos.x}%`;
