@@ -435,19 +435,45 @@ setInterval(actualizarCronometros, 1000);
 const TIEMPO_PARPADEO_POR_NOMBRE = 1;
 
 /** Ruta de la spritesheet compacta según el género y color del participante. */
+// Subir este número cada vez que se regeneren los PNG de assets/sprites/
+// (mismo nombre de archivo, contenido nuevo): fuerza a los navegadores a
+// descargar la versión nueva en vez de usar una copia vieja en caché.
+const SPRITE_VERSION = 2;
+
 function spriteUrl(participante) {
   const genero = participante.genero === 'femenino' ? 'femenino' : 'masculino';
   const color = (participante.color || '#4D96FF').replace('#', '').toLowerCase();
-  return `assets/sprites/${genero}-${color}.png`;
+  return `assets/sprites/${genero}-${color}.png?v=${SPRITE_VERSION}`;
 }
 
 // Recuerda el último puntaje pintado de cada participante para saber si
 // le cambiaron los puntos (y por lo tanto debe "caminar" hacia su nueva
-// posición). Guarda también los temporizadores en curso de cada quien.
+// posición). Guarda también los temporizadores/listeners en curso de
+// cada quien (para poder cancelarlos si le vuelven a cambiar los puntos
+// antes de que termine, o si se elimina el participante).
 const ultimosPuntos = new Map();
 const timersCaminata = new Map();
+const listenersCaminata = new Map();
 const timersDeambular = new Map();
 const timersGanador = new Map();
+
+/**
+ * Se ejecuta cuando de verdad termina la caminata hacia la nueva
+ * posición. Está pensada para poder llamarse desde dos lugares (el
+ * evento "transitionend" real y un temporizador de respaldo, por si el
+ * navegador no llegara a disparar el evento) sin problema si se llama
+ * más de una vez.
+ */
+function terminarCaminata(participante, contenido, sprite) {
+  sprite.classList.remove('avatar-sprite--caminando');
+  if (participante.puntos >= CONFIG.META_PUNTOS) {
+    if (!timersGanador.has(participante.id)) iniciarCicloGanador(participante.id, contenido, sprite);
+  } else if (!timersDeambular.has(participante.id)) {
+    sprite.classList.add('avatar-sprite--idle');
+    setDireccion(sprite, 'abajo');
+    iniciarDeambular(participante.id, contenido, sprite);
+  }
+}
 
 // Regla de velocidad: cada 1000 puntos que gane (o pierda), tarda 10
 // segundos en caminar hasta su nueva posición.
@@ -496,6 +522,10 @@ function iniciarDeambular(participanteId, contenido, sprite) {
 
     const volver = setTimeout(() => {
       if (!document.body.contains(contenido)) return;
+      // Al volver, se gira hacia el lado contrario: si se fue caminando
+      // hacia la izquierda, regresa caminando (mirando) hacia la derecha,
+      // y viceversa — nunca "moonwalk".
+      setDireccion(sprite, haciaIzquierda ? 'derecha' : 'izquierda');
       contenido.style.transition = `transform ${duracionPaso}ms ease-in-out`;
       contenido.style.transform = 'translateX(0px)';
 
@@ -548,6 +578,9 @@ function iniciarCicloGanador(participanteId, contenido, sprite) {
       participanteId,
       setTimeout(() => {
         if (!document.body.contains(contenido)) return;
+        // Igual que al deambular: al volver, se gira hacia el lado
+        // contrario para no caminar de moonwalk.
+        setDireccion(sprite, haciaIzquierda ? 'derecha' : 'izquierda');
         contenido.style.transition = `transform ${duracionPaso}ms ease-in-out`;
         contenido.style.transform = 'translateX(0px)';
         timersGanador.set(participanteId, setTimeout(sentarse, duracionPaso));
@@ -580,6 +613,9 @@ async function renderMapa() {
       detenerCicloGanador(el.dataset.id);
       clearTimeout(timersCaminata.get(el.dataset.id));
       timersCaminata.delete(el.dataset.id);
+      const listener = listenersCaminata.get(el.dataset.id);
+      if (listener) el.removeEventListener('transitionend', listener);
+      listenersCaminata.delete(el.dataset.id);
       el.remove();
     }
   });
@@ -660,6 +696,9 @@ async function renderMapa() {
     } else if (cambioPuntos !== 0) {
       detenerDeambular(participante.id);
       detenerCicloGanador(participante.id);
+      const listenerAnterior = listenersCaminata.get(participante.id);
+      if (listenerAnterior) el.removeEventListener('transitionend', listenerAnterior);
+
       contenido.style.transition = 'transform 0.4s ease';
       contenido.style.transform = 'translateX(0px)';
 
@@ -672,19 +711,27 @@ async function renderMapa() {
       const duracionMs = (Math.abs(cambioPuntos) / 1000) * MS_POR_CADA_1000_PUNTOS;
       el.style.transition = `left ${duracionMs}ms linear, top ${duracionMs}ms linear`;
 
-      timersCaminata.set(
-        participante.id,
-        setTimeout(() => {
-          sprite.classList.remove('avatar-sprite--caminando');
-          if (yaGano) {
-            iniciarCicloGanador(participante.id, contenido, sprite);
-          } else {
-            sprite.classList.add('avatar-sprite--idle');
-            setDireccion(sprite, 'abajo');
-            iniciarDeambular(participante.id, contenido, sprite);
-          }
-        }, duracionMs)
-      );
+      // Dos formas de detectar que ya llegó, para que nunca se quede
+      // caminando en el mismo lugar: el evento real de fin de
+      // transición, y un temporizador de respaldo por si el navegador
+      // no lo disparara (ambos llaman a la misma función, que es
+      // segura de ejecutar más de una vez).
+      let yaTermino = false;
+      const finalizar = () => {
+        if (yaTermino) return;
+        yaTermino = true;
+        el.removeEventListener('transitionend', alTerminarTransicion);
+        listenersCaminata.delete(participante.id);
+        clearTimeout(timersCaminata.get(participante.id));
+        timersCaminata.delete(participante.id);
+        terminarCaminata(participante, contenido, sprite);
+      };
+      const alTerminarTransicion = (evento) => {
+        if (evento.target === el && evento.propertyName === 'left') finalizar();
+      };
+      el.addEventListener('transitionend', alTerminarTransicion);
+      listenersCaminata.set(participante.id, alTerminarTransicion);
+      timersCaminata.set(participante.id, setTimeout(finalizar, duracionMs + 500));
     } else if (yaGano && !timersGanador.has(participante.id)) {
       // Ya era ganador y sigue siéndolo, pero por algún motivo su ciclo
       // no está corriendo (ej. se acaba de cargar la página): arrancarlo.
