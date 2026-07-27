@@ -138,25 +138,34 @@ un pin con foto), con tres comportamientos:
 
 - **Parado / deambulando**: mientras no le cambian los puntos, de vez en
   cuando (en un momento aleatorio, distinto por persona) camina unos pasos
-  hacia un lado y vuelve a su línea, como si explorara alrededor de su
-  lugar en el camino. La distancia que puede caminar no es fija: usa el
-  **ancho real del camino de tierra dibujado en `assets/mapa.png`** en ese
-  punto exacto (array `ANCHO_CAMINO` en `js/app.js`, extraído analizando
-  los píxeles de la imagen igual que `PATH_POINTS`), así que en los tramos
-  anchos explora bastante y en los angostos se queda más cerca de su
-  línea — nunca se sale del camino dibujado. El movimiento en sí es
-  siempre horizontal puro en pantalla (izquierda/derecha): el personaje
-  solo tiene cuadros de perfil izquierdo/derecho, así que moverlo en
-  diagonal (siguiendo la perpendicular real del camino) se veía como si
-  "subiera o bajara de costado", desincronizado con hacia dónde mira. La
-  distancia se escala según el tamaño en el que se ve el mapa en cada
-  dispositivo.
-- **Caminando hacia su nueva posición**: en cuanto le cambian los puntos,
-  vuelve primero a su línea (si estaba deambulando) y después camina de
-  verdad, en cámara lenta, desde donde está hasta su nueva posición sobre
-  el camino, mirando hacia el campamento si sube y hacia el inicio si
-  baja — la velocidad es fija: **cada 1000 puntos de diferencia son 10
-  segundos caminando** (`MS_POR_CADA_1000_PUNTOS` en `js/app.js`).
+  hacia un lado, como si explorara alrededor de su lugar en el camino. Es
+  un recorrido **libre**, no un viaje de ida y vuelta: cada paso sale de
+  donde quedó el paso anterior (no siempre desde su línea), así que puede
+  quedar alejado de su línea por un buen rato. Al llegar a cada punto se
+  detiene un momento y "mira" hacia ambos lados antes de decidir el
+  siguiente paso (array `derivasDeambular` en `js/app.js`, que guarda
+  cuánto se alejó cada quien de su línea). La distancia de cada paso no es
+  fija: usa el **ancho real del camino de tierra dibujado en
+  `assets/mapa.png`** en ese punto exacto (array `ANCHO_CAMINO` en
+  `js/app.js`, extraído analizando los píxeles de la imagen igual que
+  `PATH_POINTS`), calculado desde donde está parado ahora mismo (no desde
+  su línea), así que en los tramos anchos explora bastante y en los
+  angostos se queda más cerca del centro — nunca se sale del camino
+  dibujado. El movimiento en sí es siempre horizontal puro en pantalla
+  (izquierda/derecha): el personaje solo tiene cuadros de perfil
+  izquierdo/derecho, así que moverlo en diagonal (siguiendo la
+  perpendicular real del camino) se veía como si "subiera o bajara de
+  costado", desincronizado con hacia dónde mira. La distancia se escala
+  según el tamaño en el que se ve el mapa en cada dispositivo.
+- **Caminando hacia su nueva posición**: la única vez que vuelve a su
+  línea es cuando de verdad le cambian los puntos (sin importar qué tan
+  lejos haya quedado deambulando) — primero camina de regreso a su línea
+  (a la misma velocidad de siempre) y RECIÉN DESPUÉS arranca a subir/bajar
+  de verdad por el camino, en cámara lenta, mirando hacia el campamento si
+  sube y hacia el inicio si baja; nunca los dos movimientos a la vez, para
+  que no se vea caminando en diagonal. La velocidad de esa subida/bajada
+  es fija: **cada 1000 puntos de diferencia son 10 segundos caminando**
+  (`MS_POR_CADA_1000_PUNTOS` en `js/app.js`).
 - **Celebrando**: al llegar a la meta (`CONFIG.META_PUNTOS`), en vez de
   quedar parado alterna sin parar entre festejar con los brazos arriba y
   caminar un poco de lado a lado en su zona de la meta. Todos los que ya

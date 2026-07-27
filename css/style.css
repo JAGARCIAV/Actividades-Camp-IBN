@@ -334,24 +334,44 @@ button {
   background-position-x: 0px;
 }
 
-.avatar-nombre {
+/* Una sola pastilla con iniciales + puntos (antes eran dos apiladas:
+   se veía pesado para lo chico que es el sprite, sobre todo con varios
+   personajes juntos en el camino). */
+.avatar-etiqueta {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
   font-size: 0.55rem;
   font-weight: 700;
   background: rgba(13, 43, 28, 0.85);
   color: #fff;
-  padding: 1px 5px;
+  padding: 1px 6px;
   border-radius: 999px;
   white-space: nowrap;
-  max-width: 30px;
+}
+
+.avatar-etiqueta__nombre {
+  max-width: 26px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.avatar-etiqueta__puntos {
+  font-weight: 800;
+  color: var(--acento-oro);
+}
+
+.avatar-etiqueta__puntos::before {
+  content: "·";
+  margin-right: 3px;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 700;
+}
+
 /* Cuando 2 o más participantes coinciden en el mismo punto del camino,
-   su nombre y sus puntos no caben todos a la vez: cada uno aparece por
-   turnos (ver duración/retraso calculados en JS según cuántos son). */
-.avatar-nombre--parpadeo,
-.avatar-puntos--parpadeo {
+   la pastilla no cabe para todos a la vez: cada uno aparece por turnos
+   (ver duración/retraso calculados en JS según cuántos son). */
+.avatar-etiqueta--parpadeo {
   animation-name: parpadeoNombre;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
@@ -363,15 +383,6 @@ button {
   70% { opacity: 1; }
   85% { opacity: 0; }
   100% { opacity: 0; }
-}
-
-.avatar-puntos {
-  font-size: 0.5rem;
-  font-weight: 800;
-  color: var(--verde-900);
-  background: var(--acento-oro);
-  padding: 1px 5px;
-  border-radius: 999px;
 }
 
 /* --------------------------------------------------------------------------

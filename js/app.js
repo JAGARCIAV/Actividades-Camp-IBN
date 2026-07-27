@@ -148,9 +148,10 @@ function offsetDeLane(lane) {
   return (laneValido - (LANE_COUNT + 1) / 2) * LANE_SEPARACION_PX;
 }
 
-// Poner en `false` para ocultar las líneas de depuración de los carriles
-// una vez que se haya verificado que siguen bien el camino.
-const MOSTRAR_CARRILES_DEBUG = true;
+// Poner en `true` para volver a ver las líneas de depuración de los
+// carriles (verificar que sigan bien el camino); queda apagado para
+// que ni el público ni el admin las vean.
+const MOSTRAR_CARRILES_DEBUG = false;
 
 /** Dibuja los 12 carriles como líneas de colores, para verificar que
  *  sigan bien las curvas del camino (no se usa para nada más). */
@@ -541,6 +542,12 @@ const listenersCaminata = new Map();
 const timersDeambular = new Map();
 const timersGanador = new Map();
 
+// Cuánto se alejó cada participante de su línea mientras deambula
+// libremente (píxeles nativos de la imagen, + = derecha, - = izquierda).
+// Se acumula paso a paso (no vuelve a 0 solo) y solo se resetea cuando
+// de verdad regresa a su línea (al recibir puntos).
+const derivasDeambular = new Map();
+
 /**
  * Se ejecuta cuando de verdad termina la caminata hacia la nueva
  * posición. Está pensada para poder llamarse desde dos lugares (el
@@ -584,16 +591,48 @@ function detenerCicloGanador(participanteId) {
 
 /**
  * Mientras un participante está parado (no ganó ni le acaban de sumar
- * puntos), de vez en cuando camina unos pasos hacia un lado y vuelve a
- * su línea, como si explorara alrededor de su lugar en el camino.
- * Usa el ANCHO REAL del camino de tierra en ese punto (ANCHO_CAMINO),
- * así que en tramos anchos explora bastante y en tramos angostos se
- * queda más cerca de su línea, sin salirse nunca del camino dibujado.
+ * puntos), de vez en cuando camina unos pasos hacia un lado, como si
+ * explorara alrededor de su lugar en el camino. Es un recorrido LIBRE,
+ * no un viaje de ida y vuelta: cada paso sale de donde quedó el paso
+ * anterior (no siempre desde su línea), así que puede quedar alejado
+ * de su línea por un buen rato, deambulando a su aire. Al llegar a
+ * cada punto se detiene un momento y "mira" hacia ambos lados antes de
+ * decidir el siguiente paso. Solo vuelve a su línea cuando le toca
+ * subir/bajar de verdad (ver el manejo de `cambioPuntos` en
+ * `renderMapa`), sin importar qué tan lejos haya quedado deambulando.
+ * Usa el ANCHO REAL del camino de tierra en ese punto (ANCHO_CAMINO)
+ * para calcular cuánto espacio le queda desde donde está parado ahora
+ * (no desde su línea), así que nunca se sale del camino dibujado.
  * Cada quien tiene su propio ritmo aleatorio, para que no se vean
  * todos moviéndose sincronizados.
  */
 function iniciarDeambular(participante, contenido, sprite) {
   const participanteId = participante.id;
+
+  function quedarseQuieto() {
+    if (!document.body.contains(contenido)) return; // el avatar ya no existe
+
+    sprite.classList.remove('avatar-sprite--caminando');
+    sprite.classList.add('avatar-sprite--idle');
+
+    // Antes de decidir hacia dónde ir, "mira" primero hacia un lado y
+    // luego hacia el otro (sin moverse de lugar).
+    const primero = Math.random() < 0.5 ? 'izquierda' : 'derecha';
+    const segundo = primero === 'izquierda' ? 'derecha' : 'izquierda';
+    setDireccion(sprite, primero);
+
+    timersDeambular.set(participanteId, setTimeout(() => {
+      if (!document.body.contains(contenido)) return;
+      setDireccion(sprite, segundo);
+
+      timersDeambular.set(participanteId, setTimeout(() => {
+        if (!document.body.contains(contenido)) return;
+        setDireccion(sprite, 'abajo');
+        const espera = 2500 + Math.random() * 4500;
+        timersDeambular.set(participanteId, setTimeout(paso, espera));
+      }, 450 + Math.random() * 350));
+    }, 450 + Math.random() * 350));
+  }
 
   function paso() {
     if (!document.body.contains(contenido)) return; // el avatar ya no existe
@@ -608,15 +647,22 @@ function iniciarDeambular(participante, contenido, sprite) {
     const offsetActual = offsetDeLane(lane);
     const ancho = anchoDelCaminoEn(progreso);
 
-    // Espacio real disponible desde SU línea (no desde el centro) hacia
-    // cada lado, con margen para no llegar justo al borde del camino.
-    const espacioIzquierda = Math.max(6, (ancho.izquierda - offsetActual) * 0.85);
-    const espacioDerecha = Math.max(6, (ancho.derecha + offsetActual) * 0.85);
+    // Dónde está parado AHORA respecto al centro del camino (su línea
+    // + lo que ya se haya alejado en pasos anteriores), para calcular
+    // el espacio libre desde ahí y no desde su línea.
+    const derivaActual = derivasDeambular.get(participanteId) || 0;
+    const posicionActual = offsetActual + derivaActual;
+
+    const espacioIzquierda = Math.max(6, (ancho.izquierda - posicionActual) * 0.85);
+    const espacioDerecha = Math.max(6, (ancho.derecha + posicionActual) * 0.85);
 
     const haciaIzquierda = Math.random() < 0.5;
     const distanciaNativa = 6 + Math.random() * (haciaIzquierda ? espacioIzquierda : espacioDerecha);
-    const dx = (haciaIzquierda ? -1 : 1) * distanciaNativa * escalaMapaActual();
-    const duracionPaso = duracionParaDistanciaDeambular(dx);
+    const nuevaDeriva = derivaActual + (haciaIzquierda ? -distanciaNativa : distanciaNativa);
+    derivasDeambular.set(participanteId, nuevaDeriva);
+
+    const dx = nuevaDeriva * escalaMapaActual();
+    const duracionPaso = duracionParaDistanciaDeambular(distanciaNativa * escalaMapaActual());
 
     sprite.classList.remove('avatar-sprite--idle');
     sprite.classList.add('avatar-sprite--caminando');
@@ -625,27 +671,7 @@ function iniciarDeambular(participante, contenido, sprite) {
     contenido.style.transition = `transform ${duracionPaso}ms ease-in-out`;
     contenido.style.transform = `translateX(${dx.toFixed(1)}px)`;
 
-    const volver = setTimeout(() => {
-      if (!document.body.contains(contenido)) return;
-      // Al volver, se gira hacia el lado contrario: si se fue caminando
-      // hacia la izquierda, regresa caminando (mirando) hacia la derecha,
-      // y viceversa — nunca "moonwalk".
-      setDireccion(sprite, haciaIzquierda ? 'derecha' : 'izquierda');
-      contenido.style.transition = `transform ${duracionPaso}ms ease-in-out`;
-      contenido.style.transform = 'translateX(0px)';
-
-      const quietoDeNuevo = setTimeout(() => {
-        if (!document.body.contains(contenido)) return;
-        sprite.classList.remove('avatar-sprite--caminando');
-        sprite.classList.add('avatar-sprite--idle');
-        setDireccion(sprite, 'abajo');
-
-        const espera = 3000 + Math.random() * 5000;
-        timersDeambular.set(participanteId, setTimeout(paso, espera));
-      }, duracionPaso);
-      timersDeambular.set(participanteId, quietoDeNuevo);
-    }, duracionPaso);
-    timersDeambular.set(participanteId, volver);
+    timersDeambular.set(participanteId, setTimeout(quedarseQuieto, duracionPaso));
   }
 
   timersDeambular.set(participanteId, setTimeout(paso, Math.random() * 6000));
@@ -708,6 +734,7 @@ async function renderMapa() {
     if (!idsActuales.has(el.dataset.id)) {
       detenerDeambular(el.dataset.id);
       detenerCicloGanador(el.dataset.id);
+      derivasDeambular.delete(el.dataset.id);
       clearTimeout(timersCaminata.get(el.dataset.id));
       timersCaminata.delete(el.dataset.id);
       const listener = listenersCaminata.get(el.dataset.id);
@@ -739,20 +766,24 @@ async function renderMapa() {
       sprite.className = 'avatar-sprite avatar-sprite--idle';
       sprite.style.backgroundImage = `url(${spriteUrl(participante)})`;
 
+      const etiqueta = document.createElement('span');
+      etiqueta.className = 'avatar-etiqueta';
+
       const nombreSpan = document.createElement('span');
-      nombreSpan.className = 'avatar-nombre';
+      nombreSpan.className = 'avatar-etiqueta__nombre';
       nombreSpan.textContent = obtenerIniciales(participante.nombre);
 
       const puntosSpan = document.createElement('span');
-      puntosSpan.className = 'avatar-puntos';
-      puntosSpan.textContent = `${participante.puntos} pts`;
+      puntosSpan.className = 'avatar-etiqueta__puntos';
+      puntosSpan.textContent = participante.puntos;
 
-      contenido.append(sprite, nombreSpan, puntosSpan);
+      etiqueta.append(nombreSpan, puntosSpan);
+      contenido.append(sprite, etiqueta);
       el.appendChild(contenido);
       capa.appendChild(el);
     } else {
-      el.querySelector('.avatar-nombre').textContent = obtenerIniciales(participante.nombre);
-      el.querySelector('.avatar-puntos').textContent = `${participante.puntos} pts`;
+      el.querySelector('.avatar-etiqueta__nombre').textContent = obtenerIniciales(participante.nombre);
+      el.querySelector('.avatar-etiqueta__puntos').textContent = participante.puntos;
       const sprite = el.querySelector('.avatar-sprite');
       const nuevaUrl = spriteUrl(participante);
       if (!sprite.style.backgroundImage.includes(nuevaUrl)) {
@@ -796,17 +827,40 @@ async function renderMapa() {
       const listenerAnterior = listenersCaminata.get(participante.id);
       if (listenerAnterior) el.removeEventListener('transitionend', listenerAnterior);
 
-      contenido.style.transition = 'transform 0.4s ease';
-      contenido.style.transform = 'translateX(0px)';
+      // Si había quedado deambulando lejos de su línea, primero tiene
+      // que volver caminando hasta ella (a la misma velocidad de
+      // siempre) y RECIÉN DESPUÉS arrancar a subir/bajar por el
+      // camino — nunca los dos movimientos a la vez, porque el
+      // personaje se vería caminando en diagonal (mirando de frente o
+      // de espaldas mientras se desliza de lado).
+      const derivaActual = derivasDeambular.get(participante.id) || 0;
+      derivasDeambular.delete(participante.id);
+      const duracionVuelta = derivaActual === 0 ? 0
+        : duracionParaDistanciaDeambular(derivaActual * escalaMapaActual());
 
-      // Si sube de puntos va hacia el campamento (de espaldas, como
-      // corresponde a avanzar); si baja, va hacia el inicio (de frente).
-      setDireccion(sprite, cambioPuntos > 0 ? 'arriba' : 'abajo');
       sprite.classList.remove('avatar-sprite--idle', 'avatar-sprite--celebrando');
       sprite.classList.add('avatar-sprite--caminando');
 
+      if (duracionVuelta > 0) {
+        setDireccion(sprite, derivaActual > 0 ? 'izquierda' : 'derecha');
+        contenido.style.transition = `transform ${duracionVuelta}ms ease-in-out`;
+        contenido.style.transform = 'translateX(0px)';
+        timersDeambular.set(participante.id, setTimeout(() => {
+          if (document.body.contains(contenido)) setDireccion(sprite, cambioPuntos > 0 ? 'arriba' : 'abajo');
+        }, duracionVuelta));
+      } else {
+        // Si sube de puntos va hacia el campamento (de espaldas, como
+        // corresponde a avanzar); si baja, va hacia el inicio (de frente).
+        setDireccion(sprite, cambioPuntos > 0 ? 'arriba' : 'abajo');
+      }
+
       const duracionMs = (Math.abs(cambioPuntos) / 1000) * MS_POR_CADA_1000_PUNTOS;
-      el.style.transition = `left ${duracionMs}ms linear, top ${duracionMs}ms linear`;
+      // El movimiento por el camino (left/top) espera a que termine la
+      // vuelta a la línea (transition-delay), así que aunque la nueva
+      // posición se aplique ya mismo más abajo, no empieza a moverse
+      // hasta después de `duracionVuelta`.
+      el.style.transition =
+        `left ${duracionMs}ms linear ${duracionVuelta}ms, top ${duracionMs}ms linear ${duracionVuelta}ms`;
 
       // Dos formas de detectar que ya llegó, para que nunca se quede
       // caminando en el mismo lugar: el evento real de fin de
@@ -828,7 +882,7 @@ async function renderMapa() {
       };
       el.addEventListener('transitionend', alTerminarTransicion);
       listenersCaminata.set(participante.id, alTerminarTransicion);
-      timersCaminata.set(participante.id, setTimeout(finalizar, duracionMs + 500));
+      timersCaminata.set(participante.id, setTimeout(finalizar, duracionVuelta + duracionMs + 500));
     } else if (yaGano && !timersGanador.has(participante.id)) {
       // Ya era ganador y sigue siéndolo, pero por algún motivo su ciclo
       // no está corriendo (ej. se acaba de cargar la página): arrancarlo.
@@ -839,29 +893,22 @@ async function renderMapa() {
     // sigue solo.
 
     // Si 2 o más participantes coinciden en el mismo punto del camino,
-    // su nombre y sus puntos no caben a la vez: en su lugar, cada uno
-    // "parpadea" por turnos (nombre + puntos juntos), para que se
-    // alcancen a leer todos sin amontonarse.
+    // su pastilla (iniciales + puntos) no cabe para todos a la vez: en
+    // su lugar, cada uno "parpadea" por turnos, para que se alcancen a
+    // leer todos sin amontonarse.
     const infoRacimo = racimos.get(participante.id);
-    const nombreSpan = el.querySelector('.avatar-nombre');
-    const puntosSpan = el.querySelector('.avatar-puntos');
+    const etiqueta = el.querySelector('.avatar-etiqueta');
     if (infoRacimo && infoRacimo.tamano >= 2) {
       const duracion = infoRacimo.tamano * TIEMPO_PARPADEO_POR_NOMBRE;
       const retraso = `-${infoRacimo.turno * TIEMPO_PARPADEO_POR_NOMBRE}s`;
 
-      [nombreSpan, puntosSpan].forEach((elemento) => {
-        elemento.style.animationDuration = `${duracion}s`;
-        elemento.style.animationDelay = retraso;
-      });
-      nombreSpan.classList.add('avatar-nombre--parpadeo');
-      puntosSpan.classList.add('avatar-puntos--parpadeo');
+      etiqueta.style.animationDuration = `${duracion}s`;
+      etiqueta.style.animationDelay = retraso;
+      etiqueta.classList.add('avatar-etiqueta--parpadeo');
     } else {
-      [nombreSpan, puntosSpan].forEach((elemento) => {
-        elemento.style.animationDuration = '';
-        elemento.style.animationDelay = '';
-      });
-      nombreSpan.classList.remove('avatar-nombre--parpadeo');
-      puntosSpan.classList.remove('avatar-puntos--parpadeo');
+      etiqueta.style.animationDuration = '';
+      etiqueta.style.animationDelay = '';
+      etiqueta.classList.remove('avatar-etiqueta--parpadeo');
     }
 
     // Al llegar a la meta (CONFIG.META_PUNTOS), el personaje se marca
