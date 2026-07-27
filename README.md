@@ -144,10 +144,13 @@ un pin con foto), con tres comportamientos:
   punto exacto (array `ANCHO_CAMINO` en `js/app.js`, extraído analizando
   los píxeles de la imagen igual que `PATH_POINTS`), así que en los tramos
   anchos explora bastante y en los angostos se queda más cerca de su
-  línea — nunca se sale del camino dibujado. Se mueve en la dirección
-  perpendicular real al camino en ese punto (no solo hacia los lados de
-  la pantalla), y la distancia se escala según el tamaño en el que se ve
-  el mapa en cada dispositivo.
+  línea — nunca se sale del camino dibujado. El movimiento en sí es
+  siempre horizontal puro en pantalla (izquierda/derecha): el personaje
+  solo tiene cuadros de perfil izquierdo/derecho, así que moverlo en
+  diagonal (siguiendo la perpendicular real del camino) se veía como si
+  "subiera o bajara de costado", desincronizado con hacia dónde mira. La
+  distancia se escala según el tamaño en el que se ve el mapa en cada
+  dispositivo.
 - **Caminando hacia su nueva posición**: en cuanto le cambian los puntos,
   vuelve primero a su línea (si estaba deambulando) y después camina de
   verdad, en cámara lenta, desde donde está hasta su nueva posición sobre

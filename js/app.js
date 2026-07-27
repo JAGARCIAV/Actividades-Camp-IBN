@@ -581,10 +581,12 @@ function iniciarDeambular(participante, contenido, sprite) {
   function paso() {
     if (!document.body.contains(contenido)) return; // el avatar ya no existe
 
+    // El movimiento del deambular es SIEMPRE horizontal puro en pantalla
+    // (izquierda/derecha), nunca diagonal: aunque el camino en ese punto
+    // vaya en diagonal, el personaje solo tiene cuadros de perfil
+    // izquierdo/derecho, y moverlo en diagonal se veía como si "subiera
+    // o bajara de costado" (y desincronizado con hacia dónde mira).
     const progreso = participante.puntos / CONFIG.META_PUNTOS;
-    const { tx, ty } = puntoYTangenteEnCamino(progreso);
-    const perpX = -ty;
-    const perpY = tx;
     const lane = participante.lane || (hashTexto(participante.id) % LANE_COUNT) + 1;
     const offsetActual = offsetDeLane(lane);
     const ancho = anchoDelCaminoEn(progreso);
@@ -596,10 +598,7 @@ function iniciarDeambular(participante, contenido, sprite) {
 
     const haciaIzquierda = Math.random() < 0.5;
     const distanciaNativa = 6 + Math.random() * (haciaIzquierda ? espacioIzquierda : espacioDerecha);
-    const escala = escalaMapaActual();
-    const signo = haciaIzquierda ? 1 : -1;
-    const dx = perpX * distanciaNativa * signo * escala;
-    const dy = perpY * distanciaNativa * signo * escala;
+    const dx = (haciaIzquierda ? -1 : 1) * distanciaNativa * escalaMapaActual();
     const duracionPaso = 900 + Math.random() * 500;
 
     sprite.classList.remove('avatar-sprite--idle');
@@ -607,7 +606,7 @@ function iniciarDeambular(participante, contenido, sprite) {
     setDireccion(sprite, haciaIzquierda ? 'izquierda' : 'derecha');
 
     contenido.style.transition = `transform ${duracionPaso}ms ease-in-out`;
-    contenido.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px)`;
+    contenido.style.transform = `translateX(${dx.toFixed(1)}px)`;
 
     const volver = setTimeout(() => {
       if (!document.body.contains(contenido)) return;
@@ -616,7 +615,7 @@ function iniciarDeambular(participante, contenido, sprite) {
       // y viceversa — nunca "moonwalk".
       setDireccion(sprite, haciaIzquierda ? 'derecha' : 'izquierda');
       contenido.style.transition = `transform ${duracionPaso}ms ease-in-out`;
-      contenido.style.transform = 'translate(0px, 0px)';
+      contenido.style.transform = 'translateX(0px)';
 
       const quietoDeNuevo = setTimeout(() => {
         if (!document.body.contains(contenido)) return;
