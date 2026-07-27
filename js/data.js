@@ -54,7 +54,48 @@ const PARTICIPANTES_COL = 'participantes';
 const ACTIVIDADES_COL = 'actividades';
 const SEED_URL = 'data/participantes.json';
 
+// Carriles (lanes) fijos para ubicar a los participantes sobre el mapa
+// sin que se superpongan (ver js/app.js). Se asignan UNA sola vez, al
+// crear al participante, y nunca cambian.
+const LANE_COUNT = 12;
+
 let yaVerificoSemilla = false;
+let yaAseguroLanes = false;
+
+/**
+ * Elige el carril libre más bajo (1..LANE_COUNT); si ya están todos
+ * ocupados, los reutiliza cíclicamente según cuántos participantes hay.
+ */
+function calcularSiguienteLane(lanesUsados, totalParticipantes) {
+  for (let i = 1; i <= LANE_COUNT; i++) {
+    if (!lanesUsados.has(i)) return i;
+  }
+  return (totalParticipantes % LANE_COUNT) + 1;
+}
+
+/**
+ * Migración: le asigna un carril a cualquier participante que no
+ * tenga uno (por ejemplo, los que ya existían antes de este sistema).
+ * Se corre una sola vez por sesión; si no hay nadie sin carril, no
+ * escribe nada.
+ */
+async function asegurarLanesAsignados() {
+  if (yaAseguroLanes) return;
+  yaAseguroLanes = true;
+
+  const participantes = await getParticipantes();
+  const sinLane = participantes.filter((p) => !p.lane);
+  if (sinLane.length === 0) return;
+
+  const lanesUsados = new Set(participantes.map((p) => p.lane).filter(Boolean));
+  const batch = writeBatch(db);
+  sinLane.forEach((p) => {
+    const lane = calcularSiguienteLane(lanesUsados, lanesUsados.size);
+    lanesUsados.add(lane);
+    batch.update(doc(db, PARTICIPANTES_COL, p.id), { lane });
+  });
+  await batch.commit();
+}
 
 /** Rellena los campos que podrían faltar en datos guardados con una versión anterior. */
 function normalizarActividad(id, data) {
@@ -112,6 +153,7 @@ async function initSiHaceFalta() {
 
 async function init() {
   await initSiHaceFalta();
+  await asegurarLanesAsignados();
 }
 
 /** Devuelve todas las actividades activas, normalizadas. */
@@ -165,12 +207,23 @@ async function saveParticipantes(lista) {
   return lista;
 }
 
-/** Agrega un participante nuevo. */
+/**
+ * Agrega un participante nuevo, asignándole su carril fijo (a menos
+ * que ya venga uno explícito). Ese carril nunca vuelve a cambiar.
+ */
 async function addParticipante(participante) {
   await initSiHaceFalta();
   const id = participante.id || 'p' + Date.now();
-  const { id: _ignorar, ...datos } = participante;
-  await setDoc(doc(db, PARTICIPANTES_COL, id), datos);
+  const { id: _ignorar, lane: laneExplicito, ...datos } = participante;
+
+  let lane = laneExplicito;
+  if (!lane) {
+    const existentes = await getParticipantes();
+    const lanesUsados = new Set(existentes.map((p) => p.lane).filter(Boolean));
+    lane = calcularSiguienteLane(lanesUsados, existentes.length);
+  }
+
+  await setDoc(doc(db, PARTICIPANTES_COL, id), { ...datos, lane });
   return getParticipantes();
 }
 

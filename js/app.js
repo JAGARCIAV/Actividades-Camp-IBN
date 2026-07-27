@@ -109,42 +109,6 @@ function puntoYTangenteEnCamino(progreso) {
 }
 
 /**
- * Separación (en píxeles) entre avatares que caen en el mismo punto del
- * camino. Cuando hay 2 o más empatados, ya no caben todos los nombres
- * uno al lado del otro, así que se dejan bien juntitos y en vez de
- * pelear por espacio, su nombre/puntos/ícono van parpadeando y
- * agrandándose por turnos (ver CSS: .avatar-nombre--parpadeo,
- * .avatar-puntos--parpadeo, .avatar-contenido--parpadeo).
- */
-const SEPARACION_MINIMA_PX = 36;
-
-/**
- * Calcula la posición final en % de TODOS los participantes a la vez,
- * evitando que se solapen cuando varios tienen puntajes iguales o muy
- * cercanos.
- *
- * Cómo funciona:
- * 1) Cada participante obtiene un punto "ideal" sobre el camino según
- *    su progreso (puntos / META_PUNTOS).
- * 2) Se ordenan por progreso (equivale a ordenarlos por su posición a
- *    lo largo del camino) y se agrupan en "racimos" los que quedan más
- *    cerca que SEPARACION_MINIMA_PX entre sí.
- * 3) Cada racimo se abre en UNA SOLA fila horizontal (perpendicular a
- *    la dirección del camino en ese punto), centrada en el punto ideal
- *    del grupo. Así, sin importar cuántos participantes compartan el
- *    mismo puntaje, quedan parados en línea en ese punto del camino,
- *    nunca uno encima de otro ni uno más adelantado que otro.
- *
- * Devuelve { posiciones, racimos }:
- * - posiciones: Map id -> {x%, y%}
- * - racimos: Map id -> {tamano, turno} (tamano = cuántos comparten ese
- *   punto; turno = su lugar en el ORDEN DE PARPADEO, que se calcula
- *   aparte de su posición física en la fila para que el parpadeo no
- *   siga siempre el mismo orden de izquierda a derecha, sino uno
- *   aleatorio pero estable —no cambia entre renders— por participante).
- */
-
-/**
  * Hash determinístico de un texto, con una mezcla final ("avalancha")
  * para que ids parecidos entre sí (como "p1", "p2", "p3"...) no queden
  * en el mismo orden secuencial al ordenar por este hash.
@@ -159,91 +123,92 @@ function hashTexto(texto) {
   hash = hash ^ (hash >>> 16);
   return Math.abs(hash);
 }
-function calcularPosicionesSinSolape(participantes) {
+
+/**
+ * CARRILES (lanes): cada participante tiene asignado, desde que se
+ * crea (ver js/data.js), un carril fijo de 1 a LANE_COUNT que nunca
+ * cambia. Un carril es, ni más ni menos, una copia del camino central
+ * desplazada perpendicularmente una cantidad fija de píxeles. Así, la
+ * posición de cada quien depende de DOS cosas —su carril y su
+ * progreso—, no solo del progreso: dos participantes con el mismo
+ * puntaje quedan uno al lado del otro (cada uno en su propio carril),
+ * nunca superpuestos.
+ *
+ * Si hay más participantes que carriles, js/data.js reutiliza números
+ * de carril; el pequeño "resolvedor de colisiones" de más abajo cubre
+ * ese caso límite (mismo carril reutilizado + puntaje casi idéntico)
+ * separándolos un poco más y usando el mismo parpadeo de siempre.
+ */
+const LANE_COUNT = 12;
+const LANE_SEPARACION_PX = 36;
+
+/** Desplazamiento perpendicular (en píxeles) que le toca a un carril. */
+function offsetDeLane(lane) {
+  const laneValido = ((Math.round(lane) - 1 + LANE_COUNT) % LANE_COUNT) + 1; // siempre 1..12
+  return (laneValido - (LANE_COUNT + 1) / 2) * LANE_SEPARACION_PX;
+}
+
+// Margen de seguridad para que ningún avatar quede tapado por el borde
+// de la imagen o le "corten los pies".
+const MARGEN_BORDE_PX = 23;
+
+/**
+ * Calcula la posición final en % de TODOS los participantes, usando
+ * SIEMPRE carril + progreso (nunca solo el progreso).
+ *
+ * Devuelve { posiciones, racimos }:
+ * - posiciones: Map id -> {x%, y%}
+ * - racimos: Map id -> {tamano, turno}, solo para quienes de verdad
+ *   coincidieron en el mismo punto exacto (carril reutilizado con
+ *   puntaje casi idéntico); sirve para el parpadeo, igual que antes.
+ */
+function calcularPosicionesPorLane(participantes) {
   const base = participantes.map((participante) => {
     const progreso = participante.puntos / CONFIG.META_PUNTOS;
-    return { participante, progreso, ...puntoYTangenteEnCamino(progreso) };
-  });
-
-  // Ordenar por progreso: los que van más cerca en puntos quedan
-  // consecutivos, que es justo lo que necesita el agrupador por cercanía.
-  base.sort((a, b) => b.progreso - a.progreso);
-
-  const resultados = [];
-  const racimos = new Map();
-
-  // Margen de seguridad para que ningún avatar quede tapado por el
-  // borde de la imagen o le "corten los pies".
-  const MARGEN_BORDE_PX = 23;
-
-  function ubicarRacimo(racimo) {
-    const n = racimo.length;
-    const anclaX = racimo.reduce((s, p) => s + p.x, 0) / n;
-    const anclaY = racimo.reduce((s, p) => s + p.y, 0) / n;
-    // Perpendicular al camino en ese punto (para abrir la fila "de lado").
-    const { tx, ty } = racimo[0];
+    const { x, y, tx, ty } = puntoYTangenteEnCamino(progreso);
     const perpX = -ty;
     const perpY = tx;
+    // Todo participante debería tener carril asignado al crearse; este
+    // hash es solo un respaldo por si llegara a faltar el dato.
+    const lane = participante.lane || (hashTexto(participante.id) % LANE_COUNT) + 1;
+    const offset = offsetDeLane(lane);
 
-    // Orden de parpadeo: aleatorio (por hash del id) y NO el mismo que
-    // el orden físico de la fila, para que no siempre parpadee primero
-    // el de la izquierda.
-    const idsPorTurno = racimo
-      .map((p) => p.participante.id)
-      .sort((a, b) => hashTexto(a) - hashTexto(b));
+    return { participante, x: x + perpX * offset, y: y + perpY * offset, perpX, perpY };
+  });
 
-    const puntosRacimo = racimo.map((p, i) => {
-      const offsetPerp = (i - (n - 1) / 2) * SEPARACION_MINIMA_PX;
-      const turno = idsPorTurno.indexOf(p.participante.id);
-      racimos.set(p.participante.id, { tamano: n, turno });
-      return {
-        id: p.participante.id,
-        x: anclaX + perpX * offsetPerp,
-        y: anclaY + perpY * offsetPerp,
-      };
+  // Agrupar a quienes cayeron prácticamente en el mismo punto exacto.
+  // Con carriles únicos (12 participantes o menos) esto casi nunca pasa;
+  // es el resguardo para cuando se reutilizan carriles.
+  const grupos = new Map();
+  base.forEach((item) => {
+    const clave = `${Math.round(item.x / 8)}|${Math.round(item.y / 8)}`;
+    if (!grupos.has(clave)) grupos.set(clave, []);
+    grupos.get(clave).push(item);
+  });
+
+  const racimos = new Map();
+  const NUDGE_PX = 18;
+
+  grupos.forEach((grupo) => {
+    if (grupo.length < 2) return;
+    // Orden de parpadeo aleatorio (por hash del id), igual que antes.
+    const idsPorTurno = grupo.map((it) => it.participante.id).sort((a, b) => hashTexto(a) - hashTexto(b));
+
+    grupo.forEach((item, i) => {
+      const offsetExtra = (i - (grupo.length - 1) / 2) * NUDGE_PX;
+      item.x += item.perpX * offsetExtra;
+      item.y += item.perpY * offsetExtra;
+      racimos.set(item.participante.id, { tamano: grupo.length, turno: idsPorTurno.indexOf(item.participante.id) });
     });
-
-    // Si la fila completa se acerca al borde de la imagen, se desplaza
-    // COMO GRUPO (nunca punto por punto) para no perder la separación
-    // que ya se calculó entre sus avatares.
-    const minX = Math.min(...puntosRacimo.map((p) => p.x));
-    const maxX = Math.max(...puntosRacimo.map((p) => p.x));
-    const minY = Math.min(...puntosRacimo.map((p) => p.y));
-    const maxY = Math.max(...puntosRacimo.map((p) => p.y));
-
-    let shiftX = 0;
-    if (minX < MARGEN_BORDE_PX) shiftX = MARGEN_BORDE_PX - minX;
-    else if (maxX > MAPA_TAMANO.ancho - MARGEN_BORDE_PX) shiftX = MAPA_TAMANO.ancho - MARGEN_BORDE_PX - maxX;
-
-    let shiftY = 0;
-    if (minY < MARGEN_BORDE_PX) shiftY = MARGEN_BORDE_PX - minY;
-    else if (maxY > MAPA_TAMANO.alto - MARGEN_BORDE_PX) shiftY = MAPA_TAMANO.alto - MARGEN_BORDE_PX - maxY;
-
-    puntosRacimo.forEach((p) => resultados.push({ id: p.id, x: p.x + shiftX, y: p.y + shiftY }));
-  }
-
-  let racimoActual = [];
-  base.forEach((actual) => {
-    if (racimoActual.length === 0) {
-      racimoActual.push(actual);
-      return;
-    }
-    const anterior = racimoActual[racimoActual.length - 1];
-    const distancia = Math.hypot(actual.x - anterior.x, actual.y - anterior.y);
-    if (distancia < SEPARACION_MINIMA_PX) {
-      racimoActual.push(actual);
-    } else {
-      ubicarRacimo(racimoActual);
-      racimoActual = [actual];
-    }
   });
-  if (racimoActual.length) ubicarRacimo(racimoActual);
 
-  // Convertir de píxeles a % y devolver un mapa id -> {x%, y%} listo para usar.
   const posiciones = new Map();
-  resultados.forEach(({ id, x, y }) => {
-    posiciones.set(id, { x: (x / MAPA_TAMANO.ancho) * 100, y: (y / MAPA_TAMANO.alto) * 100 });
+  base.forEach((item) => {
+    const px = Math.min(Math.max(item.x, MARGEN_BORDE_PX), MAPA_TAMANO.ancho - MARGEN_BORDE_PX);
+    const py = Math.min(Math.max(item.y, MARGEN_BORDE_PX), MAPA_TAMANO.alto - MARGEN_BORDE_PX);
+    posiciones.set(item.participante.id, { x: (px / MAPA_TAMANO.ancho) * 100, y: (py / MAPA_TAMANO.alto) * 100 });
   });
+
   return { posiciones, racimos };
 }
 
@@ -435,7 +400,7 @@ async function renderMapa() {
 
   // Se calculan todas las posiciones juntas (no una por una) porque el
   // anti-solape necesita ver el conjunto completo para armar las filas.
-  const { posiciones, racimos } = calcularPosicionesSinSolape(participantes);
+  const { posiciones, racimos } = calcularPosicionesPorLane(participantes);
 
   participantes.forEach((participante) => {
     const pos = posiciones.get(participante.id);

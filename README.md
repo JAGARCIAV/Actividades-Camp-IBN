@@ -105,6 +105,22 @@ curva real con precisión. Si el mapa cambia en el futuro, hay que repetir
 ese análisis (o ajustar los puntos a mano) para que sigan la nueva forma;
 el resto del código no necesita tocarse.
 
+### Carriles (lanes): por qué nadie queda superpuesto
+
+La posición de cada participante no depende SOLO de su progreso: también
+depende de su **carril** (`lane`, un número de 1 a 12) que se le asigna una
+sola vez al crearse (en `js/data.js`, función `addParticipante`) y que nunca
+cambia. Un carril es una copia del camino central desplazada unos cuantos
+píxeles hacia un lado, así que dos participantes con el mismo puntaje quedan
+uno al lado del otro (cada uno en su propio carril) en vez de superpuestos.
+
+Si hay más de 12 participantes, los carriles se reutilizan cíclicamente
+(carril más bajo disponible; si los 12 están ocupados, se repite el ciclo).
+Para el caso límite de que a dos les toque el mismo carril reutilizado con
+un puntaje casi idéntico, `js/app.js` (`calcularPosicionesPorLane`) los
+separa un poco más y usa el mismo parpadeo de siempre para que se note quién
+es quién.
+
 ## Cómo se muestra el nombre
 
 - En el **mapa**, cada avatar solo muestra sus **iniciales** (letra del nombre
