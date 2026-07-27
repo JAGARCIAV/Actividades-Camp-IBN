@@ -10,14 +10,14 @@
     }
   ],
   "participantes": [
-    { "id": "p1", "nombre": "Jose Armando García Vallejos", "foto": "", "puntos": 0, "color": "#FF6B6B", "genero": "masculino" },
-    { "id": "p2", "nombre": "Anahí Belén Jesús Gras",        "foto": "", "puntos": 0, "color": "#4D96FF", "genero": "femenino" },
-    { "id": "p3", "nombre": "Gloria Anjhelin Segarra Teran", "foto": "", "puntos": 0, "color": "#FFB84D", "genero": "femenino" },
-    { "id": "p4", "nombre": "Abigail Pérez Pinto",           "foto": "", "puntos": 0, "color": "#9B5DE5", "genero": "femenino" },
-    { "id": "p5", "nombre": "Liliana Landivar Negron",       "foto": "", "puntos": 0, "color": "#00C2A8", "genero": "femenino" },
-    { "id": "p6", "nombre": "Evelia Zarate Calvimontes",     "foto": "", "puntos": 0, "color": "#F15BB5", "genero": "femenino" },
-    { "id": "p7", "nombre": "Avril Sofía Pérez Quiroga",     "foto": "", "puntos": 0, "color": "#FFC93C", "genero": "femenino" },
-    { "id": "p8", "nombre": "Julián Mario Pérez Quiroga",    "foto": "", "puntos": 0, "color": "#2EC4B6", "genero": "masculino" },
-    { "id": "p9", "nombre": "Maite Renata Pérez Quiroga",    "foto": "", "puntos": 0, "color": "#FF9F1C", "genero": "femenino" }
+    { "id": "p1", "nombre": "Jose Armando García Vallejos", "foto": "", "puntos": 0, "color": "#E94957", "genero": "masculino" },
+    { "id": "p2", "nombre": "Anahí Belén Jesús Gras",        "foto": "", "puntos": 0, "color": "#4957E9", "genero": "femenino" },
+    { "id": "p3", "nombre": "Gloria Anjhelin Segarra Teran", "foto": "", "puntos": 0, "color": "#E9A649", "genero": "femenino" },
+    { "id": "p4", "nombre": "Abigail Pérez Pinto",           "foto": "", "puntos": 0, "color": "#A649E9", "genero": "femenino" },
+    { "id": "p5", "nombre": "Liliana Landivar Negron",       "foto": "", "puntos": 0, "color": "#49E9A6", "genero": "femenino" },
+    { "id": "p6", "nombre": "Evelia Zarate Calvimontes",     "foto": "", "puntos": 0, "color": "#E949C1", "genero": "femenino" },
+    { "id": "p7", "nombre": "Avril Sofía Pérez Quiroga",     "foto": "", "puntos": 0, "color": "#C1E949", "genero": "femenino" },
+    { "id": "p8", "nombre": "Julián Mario Pérez Quiroga",    "foto": "", "puntos": 0, "color": "#57E949", "genero": "masculino" },
+    { "id": "p9", "nombre": "Maite Renata Pérez Quiroga",    "foto": "", "puntos": 0, "color": "#49C1E9", "genero": "femenino" }
   ]
 }

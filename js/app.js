@@ -278,20 +278,6 @@ function obtenerIniciales(nombre) {
     .join('');
 }
 
-/**
- * Nombre "corto" para mostrar en público: primer nombre + inicial del
- * último apellido (ej. "Andrea Gómez López" -> "Andrea L."). El nombre
- * completo se sigue guardando tal cual en los datos; esto es solo para
- * la vista pública (mapa y ranking).
- */
-function nombreCorto(nombreCompleto) {
-  const partes = nombreCompleto.trim().split(/\s+/).filter(Boolean);
-  if (partes.length <= 1) return partes[0] || '';
-  const nombre = partes[0];
-  const inicial = partes[partes.length - 1][0].toUpperCase();
-  return `${nombre} ${inicial}.`;
-}
-
 /** Crea el <img>/iniciales de un avatar con fallback si la foto no carga o no existe. */
 function crearFotoElemento(participante, claseImg, claseIniciales) {
   function crearIniciales() {
@@ -492,7 +478,7 @@ function detenerDeambular(participanteId) {
   timersDeambular.delete(participanteId);
 }
 
-/** Cancela el ciclo de "ganador" (celebrar/caminar/sentarse) de un participante. */
+/** Cancela el ciclo de "ganador" (celebrar/caminar) de un participante. */
 function detenerCicloGanador(participanteId) {
   clearTimeout(timersGanador.get(participanteId));
   timersGanador.delete(participanteId);
@@ -548,14 +534,13 @@ function iniciarDeambular(participanteId, contenido, sprite) {
 
 /**
  * El participante que ya llegó a la meta nunca se queda "congelado":
- * va alternando para siempre entre festejar/llamar a sus amigos,
- * caminar un poco de lado a lado (una zona chica, ya está en la meta),
- * y sentarse a descansar un rato, y vuelve a empezar.
+ * va alternando para siempre entre festejar/llamar a sus amigos y
+ * caminar un poco de lado a lado (una zona chica, ya está en la meta).
  */
 function iniciarCicloGanador(participanteId, contenido, sprite) {
   function celebrando() {
     if (!document.body.contains(contenido)) return;
-    sprite.classList.remove('avatar-sprite--sentado', 'avatar-sprite--caminando');
+    sprite.classList.remove('avatar-sprite--caminando');
     setDireccion(sprite, 'abajo');
     sprite.classList.add('avatar-sprite--celebrando');
     timersGanador.set(participanteId, setTimeout(caminarUnPoco, 4000 + Math.random() * 3000));
@@ -583,17 +568,9 @@ function iniciarCicloGanador(participanteId, contenido, sprite) {
         setDireccion(sprite, haciaIzquierda ? 'derecha' : 'izquierda');
         contenido.style.transition = `transform ${duracionPaso}ms ease-in-out`;
         contenido.style.transform = 'translateX(0px)';
-        timersGanador.set(participanteId, setTimeout(sentarse, duracionPaso));
+        timersGanador.set(participanteId, setTimeout(celebrando, duracionPaso));
       }, duracionPaso)
     );
-  }
-
-  function sentarse() {
-    if (!document.body.contains(contenido)) return;
-    sprite.classList.remove('avatar-sprite--caminando');
-    setDireccion(sprite, 'abajo');
-    sprite.classList.add('avatar-sprite--sentado');
-    timersGanador.set(participanteId, setTimeout(celebrando, 5000 + Math.random() * 4000));
   }
 
   celebrando();
@@ -705,7 +682,7 @@ async function renderMapa() {
       // Si sube de puntos va hacia el campamento (de espaldas, como
       // corresponde a avanzar); si baja, va hacia el inicio (de frente).
       setDireccion(sprite, cambioPuntos > 0 ? 'arriba' : 'abajo');
-      sprite.classList.remove('avatar-sprite--idle', 'avatar-sprite--celebrando', 'avatar-sprite--sentado');
+      sprite.classList.remove('avatar-sprite--idle', 'avatar-sprite--celebrando');
       sprite.classList.add('avatar-sprite--caminando');
 
       const duracionMs = (Math.abs(cambioPuntos) / 1000) * MS_POR_CADA_1000_PUNTOS;
@@ -814,7 +791,7 @@ async function renderRanking() {
     info.className = 'ranking-info';
     const nombreDiv = document.createElement('div');
     nombreDiv.className = 'ranking-nombre';
-    nombreDiv.textContent = nombreCorto(participante.nombre);
+    nombreDiv.textContent = participante.nombre;
     info.appendChild(nombreDiv);
 
     const puntosSpan = document.createElement('span');

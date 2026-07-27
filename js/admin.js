@@ -8,7 +8,12 @@
  * ------------------------------------------------------------------
  */
 
-let coloresDisponibles = ['#FF6B6B', '#4D96FF', '#FFB84D', '#9B5DE5', '#00C2A8', '#F15BB5', '#FFC93C', '#2EC4B6'];
+// Paleta con el matiz (hue) de cada color separado 40° del siguiente
+// (360° / 9), para que nunca haya dos colores parecidos entre sí.
+let coloresDisponibles = [
+  '#E94957', '#E949C1', '#A649E9', '#4957E9',
+  '#49C1E9', '#49E9A6', '#57E949', '#C1E949', '#E9A649',
+];
 
 function colorAleatorio() {
   return coloresDisponibles[Math.floor(Math.random() * coloresDisponibles.length)];

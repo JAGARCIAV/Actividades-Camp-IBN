@@ -312,21 +312,6 @@ button {
   animation: spriteCaminar 0.8s steps(9) infinite;
 }
 
-/* Sentarse: recorre los 3 cuadros de "sentado" UNA vez y se queda en
-   el último (ya sentado). La fila (dirección) la pone JS con las
-   clases --dir-*, igual que al caminar. */
-@keyframes spriteSentarse {
-  from { background-position-x: 0px; }
-  to { background-position-x: -80px; }
-}
-.avatar-sprite--sentado {
-  animation: spriteSentarse 0.6s steps(3) forwards;
-}
-.avatar-sprite--sentado.avatar-sprite--dir-arriba { background-position-y: -160px; }
-.avatar-sprite--sentado.avatar-sprite--dir-izquierda { background-position-y: -200px; }
-.avatar-sprite--sentado.avatar-sprite--dir-abajo { background-position-y: -240px; }
-.avatar-sprite--sentado.avatar-sprite--dir-derecha { background-position-y: -280px; }
-
 /* Celebrar: los mismos 3 cuadros pero en bucle continuo (nunca se
    congela): neutral, neutral, brazos arriba, y otra vez. Es el estado
    de quien ya llegó a la meta. */
