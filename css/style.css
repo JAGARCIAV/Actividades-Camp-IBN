@@ -236,6 +236,17 @@ button {
   inset: 0;
 }
 
+/* Líneas de depuración de los 12 carriles (ver MOSTRAR_CARRILES_DEBUG
+   en js/app.js). No reciben clics: son solo para verificar visualmente
+   que siguen bien las curvas del camino. */
+.mapa-lineas-carriles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 /* --------------------------------------------------------------------------
    AVATAR DE PARTICIPANTE (sobre el mapa)
    -------------------------------------------------------------------------- */
@@ -277,13 +288,22 @@ button {
   background-repeat: no-repeat;
   background-size: 360px 480px; /* 9 columnas x 40px, 12 filas x 40px */
   background-position-x: 0px;
-  background-position-y: -80px; /* fila 2: parado/caminando de frente */
+  background-position-y: -80px; /* fila 2: parado de frente, por defecto */
   image-rendering: pixelated;
 }
 
-/* Caminar: recorre los 9 cuadros en bucle. La fila (dirección) se fija
-   por JS vía background-position-y inline (abajo por defecto al avanzar
-   por el camino; izquierda/derecha mientras deambula de lado a lado). */
+/* Dirección hacia la que mira el personaje. Son clases explícitas (no
+   estilo inline) para que nunca queden "pegadas" de un estado anterior:
+   en cada cambio de estado, JS quita las 4 y pone solo la que toca.
+   - arriba:    de espaldas, subiendo por el camino hacia el campamento.
+   - abajo:     de frente, bajando por el camino hacia el inicio.
+   - izquierda / derecha: de perfil, para el deambular de lado a lado. */
+.avatar-sprite--dir-arriba { background-position-y: 0px; }
+.avatar-sprite--dir-izquierda { background-position-y: -40px; }
+.avatar-sprite--dir-abajo { background-position-y: -80px; }
+.avatar-sprite--dir-derecha { background-position-y: -120px; }
+
+/* Caminar: recorre los 9 cuadros de la fila (dirección) activa, en bucle. */
 @keyframes spriteCaminar {
   from { background-position-x: 0px; }
   to { background-position-x: -360px; }
@@ -292,37 +312,41 @@ button {
   animation: spriteCaminar 0.8s steps(9) infinite;
 }
 
-/* Sentarse: recorre los 3 cuadros de la fila "sentado abajo" UNA vez
-   y se queda en el último (ya sentado). Ya no se usa para el estado
-   ganador (ver "celebrar" más abajo), pero queda disponible. */
+/* Sentarse: recorre los 3 cuadros de "sentado" UNA vez y se queda en
+   el último (ya sentado). La fila (dirección) la pone JS con las
+   clases --dir-*, igual que al caminar. */
 @keyframes spriteSentarse {
   from { background-position-x: 0px; }
   to { background-position-x: -80px; }
 }
 .avatar-sprite--sentado {
-  background-position-y: -240px; /* fila 6: sentado de frente */
   animation: spriteSentarse 0.6s steps(3) forwards;
 }
+.avatar-sprite--sentado.avatar-sprite--dir-arriba { background-position-y: -160px; }
+.avatar-sprite--sentado.avatar-sprite--dir-izquierda { background-position-y: -200px; }
+.avatar-sprite--sentado.avatar-sprite--dir-abajo { background-position-y: -240px; }
+.avatar-sprite--sentado.avatar-sprite--dir-derecha { background-position-y: -280px; }
 
-/* Celebrar: recorre los 3 cuadros de "celebrar abajo" UNA vez y se
-   queda en el último (brazos arriba, festejando). Es el estado del
-   participante que ya llegó a la meta. */
+/* Celebrar: los mismos 3 cuadros pero en bucle continuo (nunca se
+   congela): neutral, neutral, brazos arriba, y otra vez. Es el estado
+   de quien ya llegó a la meta. */
 @keyframes spriteCelebrar {
   from { background-position-x: 0px; }
   to { background-position-x: -80px; }
 }
 .avatar-sprite--celebrando {
-  background-position-y: -400px; /* fila 10: celebrar de frente */
-  animation: spriteCelebrar 0.5s steps(3) forwards;
+  animation: spriteCelebrar 0.9s steps(3) infinite;
 }
+.avatar-sprite--celebrando.avatar-sprite--dir-arriba { background-position-y: -320px; }
+.avatar-sprite--celebrando.avatar-sprite--dir-izquierda { background-position-y: -360px; }
+.avatar-sprite--celebrando.avatar-sprite--dir-abajo { background-position-y: -400px; }
+.avatar-sprite--celebrando.avatar-sprite--dir-derecha { background-position-y: -440px; }
 
-/* Parado (idle): quieto, de frente. El "deambular" de lado a lado
-   (caminar unos pasos e ir explorando) lo maneja JS activando
-   temporalmente .avatar-sprite--caminando con la fila de dirección
-   correspondiente, así que aquí no hace falta animación. */
+/* Parado (idle): quieto. El "deambular" de lado a lado (caminar unos
+   pasos e ir explorando) lo maneja JS activando temporalmente
+   .avatar-sprite--caminando con la clase de dirección correspondiente. */
 .avatar-sprite--idle {
   background-position-x: 0px;
-  background-position-y: -80px;
 }
 
 .avatar-nombre {
@@ -369,9 +393,14 @@ button {
    GANADOR: participante que llegó a la meta (CONFIG.META_PUNTOS)
    -------------------------------------------------------------------------- */
 
-.avatar-participante--ganador .avatar-sprite {
-  background-position-y: -400px; /* fila 10: celebrar de frente */
-  animation: spriteCelebrar 0.5s steps(3) forwards, brilloGanador 1.6s ease-in-out infinite;
+/* El brillo dorado se aplica en .avatar-contenido (no en .avatar-sprite)
+   a propósito: el sprite ya tiene su propia animación de pose
+   (celebrando/caminando/sentado, ver js/app.js) y una sola propiedad
+   "animation" no puede combinar dos animaciones de distintas reglas
+   con distinta especificidad; puestas en elementos separados, ambas
+   se ven a la vez sin pisarse. */
+.avatar-participante--ganador .avatar-contenido {
+  animation: brilloGanador 1.6s ease-in-out infinite;
 }
 
 .avatar-participante--ganador::before {

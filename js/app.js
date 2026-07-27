@@ -148,6 +148,39 @@ function offsetDeLane(lane) {
   return (laneValido - (LANE_COUNT + 1) / 2) * LANE_SEPARACION_PX;
 }
 
+// Poner en `false` para ocultar las líneas de depuración de los carriles
+// una vez que se haya verificado que siguen bien el camino.
+const MOSTRAR_CARRILES_DEBUG = true;
+
+/** Dibuja los 12 carriles como líneas de colores, para verificar que
+ *  sigan bien las curvas del camino (no se usa para nada más). */
+function dibujarLineasCarriles() {
+  const svg = document.getElementById('lineasCarriles');
+  if (!svg || !MOSTRAR_CARRILES_DEBUG) return;
+
+  const coloresDebug = [
+    '#e63946', '#f3722c', '#f8961e', '#f9c74f', '#90be6d', '#43aa8b',
+    '#4d908e', '#577590', '#277da1', '#9d4edd', '#c9184a', '#ff7096',
+  ];
+  const MUESTRAS = 60;
+
+  for (let lane = 1; lane <= LANE_COUNT; lane++) {
+    const puntos = [];
+    for (let i = 0; i <= MUESTRAS; i++) {
+      const { x, y, tx, ty } = puntoYTangenteEnCamino(i / MUESTRAS);
+      const offset = offsetDeLane(lane);
+      puntos.push(`${(x - ty * offset).toFixed(1)},${(y + tx * offset).toFixed(1)}`);
+    }
+    const linea = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    linea.setAttribute('points', puntos.join(' '));
+    linea.setAttribute('fill', 'none');
+    linea.setAttribute('stroke', coloresDebug[lane - 1]);
+    linea.setAttribute('stroke-width', '2');
+    linea.setAttribute('stroke-opacity', '0.65');
+    svg.appendChild(linea);
+  }
+}
+
 // Margen de seguridad para que ningún avatar quede tapado por el borde
 // de la imagen o le "corten los pies".
 const MARGEN_BORDE_PX = 23;
@@ -414,15 +447,29 @@ function spriteUrl(participante) {
 const ultimosPuntos = new Map();
 const timersCaminata = new Map();
 const timersDeambular = new Map();
+const timersGanador = new Map();
 
-// Regla de velocidad: cada 100 puntos que gane (o pierda), tarda 30
+// Regla de velocidad: cada 1000 puntos que gane (o pierda), tarda 10
 // segundos en caminar hasta su nueva posición.
-const MS_POR_CADA_100_PUNTOS = 30000;
+const MS_POR_CADA_1000_PUNTOS = 10000;
+
+const DIRECCIONES = ['arriba', 'izquierda', 'abajo', 'derecha'];
+
+/** Pone al sprite a mirar en una dirección, quitando las otras 3. */
+function setDireccion(sprite, direccion) {
+  DIRECCIONES.forEach((d) => sprite.classList.toggle(`avatar-sprite--dir-${d}`, d === direccion));
+}
 
 /** Cancela cualquier paso de "deambular" pendiente de un participante. */
 function detenerDeambular(participanteId) {
   clearTimeout(timersDeambular.get(participanteId));
   timersDeambular.delete(participanteId);
+}
+
+/** Cancela el ciclo de "ganador" (celebrar/caminar/sentarse) de un participante. */
+function detenerCicloGanador(participanteId) {
+  clearTimeout(timersGanador.get(participanteId));
+  timersGanador.delete(participanteId);
 }
 
 /**
@@ -442,7 +489,7 @@ function iniciarDeambular(participanteId, contenido, sprite) {
 
     sprite.classList.remove('avatar-sprite--idle');
     sprite.classList.add('avatar-sprite--caminando');
-    sprite.style.backgroundPositionY = haciaIzquierda ? '-40px' : '-120px'; // fila izq/der
+    setDireccion(sprite, haciaIzquierda ? 'izquierda' : 'derecha');
 
     contenido.style.transition = `transform ${duracionPaso}ms ease-in-out`;
     contenido.style.transform = `translateX(${haciaIzquierda ? -distancia : distancia}px)`;
@@ -456,7 +503,7 @@ function iniciarDeambular(participanteId, contenido, sprite) {
         if (!document.body.contains(contenido)) return;
         sprite.classList.remove('avatar-sprite--caminando');
         sprite.classList.add('avatar-sprite--idle');
-        sprite.style.backgroundPositionY = '';
+        setDireccion(sprite, 'abajo');
 
         const espera = 3000 + Math.random() * 5000;
         timersDeambular.set(participanteId, setTimeout(paso, espera));
@@ -467,6 +514,56 @@ function iniciarDeambular(participanteId, contenido, sprite) {
   }
 
   timersDeambular.set(participanteId, setTimeout(paso, Math.random() * 6000));
+}
+
+/**
+ * El participante que ya llegó a la meta nunca se queda "congelado":
+ * va alternando para siempre entre festejar/llamar a sus amigos,
+ * caminar un poco de lado a lado (una zona chica, ya está en la meta),
+ * y sentarse a descansar un rato, y vuelve a empezar.
+ */
+function iniciarCicloGanador(participanteId, contenido, sprite) {
+  function celebrando() {
+    if (!document.body.contains(contenido)) return;
+    sprite.classList.remove('avatar-sprite--sentado', 'avatar-sprite--caminando');
+    setDireccion(sprite, 'abajo');
+    sprite.classList.add('avatar-sprite--celebrando');
+    timersGanador.set(participanteId, setTimeout(caminarUnPoco, 4000 + Math.random() * 3000));
+  }
+
+  function caminarUnPoco() {
+    if (!document.body.contains(contenido)) return;
+    const haciaIzquierda = Math.random() < 0.5;
+    const distancia = 12 + Math.random() * 16;
+    const duracionPaso = 1000 + Math.random() * 600;
+
+    sprite.classList.remove('avatar-sprite--celebrando');
+    sprite.classList.add('avatar-sprite--caminando');
+    setDireccion(sprite, haciaIzquierda ? 'izquierda' : 'derecha');
+
+    contenido.style.transition = `transform ${duracionPaso}ms ease-in-out`;
+    contenido.style.transform = `translateX(${haciaIzquierda ? -distancia : distancia}px)`;
+
+    timersGanador.set(
+      participanteId,
+      setTimeout(() => {
+        if (!document.body.contains(contenido)) return;
+        contenido.style.transition = `transform ${duracionPaso}ms ease-in-out`;
+        contenido.style.transform = 'translateX(0px)';
+        timersGanador.set(participanteId, setTimeout(sentarse, duracionPaso));
+      }, duracionPaso)
+    );
+  }
+
+  function sentarse() {
+    if (!document.body.contains(contenido)) return;
+    sprite.classList.remove('avatar-sprite--caminando');
+    setDireccion(sprite, 'abajo');
+    sprite.classList.add('avatar-sprite--sentado');
+    timersGanador.set(participanteId, setTimeout(celebrando, 5000 + Math.random() * 4000));
+  }
+
+  celebrando();
 }
 
 async function renderMapa() {
@@ -480,6 +577,7 @@ async function renderMapa() {
   capa.querySelectorAll('.avatar-participante').forEach((el) => {
     if (!idsActuales.has(el.dataset.id)) {
       detenerDeambular(el.dataset.id);
+      detenerCicloGanador(el.dataset.id);
       clearTimeout(timersCaminata.get(el.dataset.id));
       timersCaminata.delete(el.dataset.id);
       el.remove();
@@ -530,9 +628,11 @@ async function renderMapa() {
     }
 
     // Estado del personaje:
-    // - "celebrando" si ya llegó a la meta.
+    // - Recién llegado a la meta: entra al ciclo de ganador (festeja,
+    //   camina un poco, se sienta a descansar, y repite sin parar).
     // - "caminando" hacia su nueva posición justo después de que le
-    //   cambien los puntos (lento: 100 puntos = 30 segundos), volviendo
+    //   cambien los puntos (lento: 1000 puntos = 10 segundos), mirando
+    //   hacia el campamento si sube y hacia el inicio si baja, volviendo
     //   antes a su línea si estaba deambulando de lado a lado.
     // - "parado" (con deambular ocasional) el resto del tiempo.
     const contenido = el.querySelector('.avatar-contenido');
@@ -551,21 +651,25 @@ async function renderMapa() {
       contenido.style.transform = 'translateX(0px)';
       if (yaGano) {
         sprite.classList.remove('avatar-sprite--idle', 'avatar-sprite--caminando');
-        sprite.classList.add('avatar-sprite--celebrando');
+        iniciarCicloGanador(participante.id, contenido, sprite);
       } else {
         sprite.classList.add('avatar-sprite--idle');
+        setDireccion(sprite, 'abajo');
         iniciarDeambular(participante.id, contenido, sprite);
       }
     } else if (cambioPuntos !== 0) {
       detenerDeambular(participante.id);
+      detenerCicloGanador(participante.id);
       contenido.style.transition = 'transform 0.4s ease';
       contenido.style.transform = 'translateX(0px)';
 
-      sprite.style.backgroundPositionY = ''; // vuelve a la fila "abajo" para avanzar
-      sprite.classList.remove('avatar-sprite--idle', 'avatar-sprite--celebrando');
+      // Si sube de puntos va hacia el campamento (de espaldas, como
+      // corresponde a avanzar); si baja, va hacia el inicio (de frente).
+      setDireccion(sprite, cambioPuntos > 0 ? 'arriba' : 'abajo');
+      sprite.classList.remove('avatar-sprite--idle', 'avatar-sprite--celebrando', 'avatar-sprite--sentado');
       sprite.classList.add('avatar-sprite--caminando');
 
-      const duracionMs = (Math.abs(cambioPuntos) / 100) * MS_POR_CADA_100_PUNTOS;
+      const duracionMs = (Math.abs(cambioPuntos) / 1000) * MS_POR_CADA_1000_PUNTOS;
       el.style.transition = `left ${duracionMs}ms linear, top ${duracionMs}ms linear`;
 
       timersCaminata.set(
@@ -573,19 +677,22 @@ async function renderMapa() {
         setTimeout(() => {
           sprite.classList.remove('avatar-sprite--caminando');
           if (yaGano) {
-            sprite.classList.add('avatar-sprite--celebrando');
+            iniciarCicloGanador(participante.id, contenido, sprite);
           } else {
             sprite.classList.add('avatar-sprite--idle');
+            setDireccion(sprite, 'abajo');
             iniciarDeambular(participante.id, contenido, sprite);
           }
         }, duracionMs)
       );
-    } else if (yaGano && !sprite.classList.contains('avatar-sprite--celebrando')) {
-      sprite.classList.remove('avatar-sprite--idle', 'avatar-sprite--caminando');
-      sprite.classList.add('avatar-sprite--celebrando');
+    } else if (yaGano && !timersGanador.has(participante.id)) {
+      // Ya era ganador y sigue siéndolo, pero por algún motivo su ciclo
+      // no está corriendo (ej. se acaba de cargar la página): arrancarlo.
+      iniciarCicloGanador(participante.id, contenido, sprite);
     }
-    // Si no hubo cambio de puntos y no es la primera vez ni ganador,
-    // no se toca nada: el deambular en curso sigue solo.
+    // Si no hubo cambio de puntos y no es la primera vez ni ganador
+    // recién iniciado, no se toca nada: el deambular/ciclo en curso
+    // sigue solo.
 
     // Si 2 o más participantes coinciden en el mismo punto del camino,
     // su nombre y sus puntos no caben a la vez: en su lugar, cada uno
@@ -700,6 +807,7 @@ async function renderTodo() {
 async function iniciar() {
   await DataService.init();
   cargarLogo();
+  dibujarLineasCarriles();
   await renderTodo();
 
   // Firestore avisa en tiempo real cuando cambian los datos, sin
