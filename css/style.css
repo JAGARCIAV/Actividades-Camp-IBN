@@ -260,26 +260,30 @@ button {
    -------------------------------------------------------------------------- */
 
 /*
- * Cada imagen (assets/sprites/masculino-{color}.png) es una hoja
- * compacta de 9 columnas x 8 filas, cuadros de 64x64 px originales:
- *   fila 0 = caminar arriba     fila 4 = sentarse arriba
- *   fila 1 = caminar izquierda  fila 5 = sentarse izquierda
- *   fila 2 = caminar abajo      fila 6 = sentarse abajo
- *   fila 3 = caminar derecha    fila 7 = sentarse derecha
- * (las filas de caminar tienen 9 cuadros; las de sentarse, 3).
+ * Cada imagen (assets/sprites/{genero}-{color}.png) es una hoja
+ * compacta de 9 columnas x 12 filas, cuadros de 64x64 px originales:
+ *   fila 0  = caminar arriba      fila 4  = sentarse arriba
+ *   fila 1  = caminar izquierda   fila 5  = sentarse izquierda
+ *   fila 2  = caminar abajo       fila 6  = sentarse abajo
+ *   fila 3  = caminar derecha     fila 7  = sentarse derecha
+ *   fila 8  = celebrar arriba     fila 10 = celebrar abajo
+ *   fila 9  = celebrar izquierda  fila 11 = celebrar derecha
+ * (las filas de caminar tienen 9 cuadros; sentarse/celebrar, 3).
  * Se muestra cada cuadro a 40x40 px en pantalla (escalado desde 64x64).
  */
 .avatar-sprite {
   width: 40px;
   height: 40px;
   background-repeat: no-repeat;
-  background-size: 360px 320px; /* 9 columnas x 40px, 8 filas x 40px */
+  background-size: 360px 480px; /* 9 columnas x 40px, 12 filas x 40px */
   background-position-x: 0px;
-  background-position-y: -80px; /* fila 2: parado de frente */
+  background-position-y: -80px; /* fila 2: parado/caminando de frente */
   image-rendering: pixelated;
 }
 
-/* Caminar: recorre los 9 cuadros de la fila "abajo" en bucle. */
+/* Caminar: recorre los 9 cuadros en bucle. La fila (dirección) se fija
+   por JS vía background-position-y inline (abajo por defecto al avanzar
+   por el camino; izquierda/derecha mientras deambula de lado a lado). */
 @keyframes spriteCaminar {
   from { background-position-x: 0px; }
   to { background-position-x: -360px; }
@@ -289,7 +293,8 @@ button {
 }
 
 /* Sentarse: recorre los 3 cuadros de la fila "sentado abajo" UNA vez
-   y se queda en el último (ya sentado). */
+   y se queda en el último (ya sentado). Ya no se usa para el estado
+   ganador (ver "celebrar" más abajo), pero queda disponible. */
 @keyframes spriteSentarse {
   from { background-position-x: 0px; }
   to { background-position-x: -80px; }
@@ -299,19 +304,25 @@ button {
   animation: spriteSentarse 0.6s steps(3) forwards;
 }
 
-/* Parado (idle): de vez en cuando "mira" a los lados usando los
-   cuadros de pie de las filas izquierda/derecha, y vuelve de frente.
-   Cada personaje arranca en un momento distinto (retraso aleatorio
-   asignado en JS) para que no se muevan todos sincronizados. */
-@keyframes spriteIdle {
-  0%, 14% { background-position-y: -80px; }
-  18%, 28% { background-position-y: -40px; }
-  32%, 55% { background-position-y: -80px; }
-  60%, 70% { background-position-y: -120px; }
-  75%, 100% { background-position-y: -80px; }
+/* Celebrar: recorre los 3 cuadros de "celebrar abajo" UNA vez y se
+   queda en el último (brazos arriba, festejando). Es el estado del
+   participante que ya llegó a la meta. */
+@keyframes spriteCelebrar {
+  from { background-position-x: 0px; }
+  to { background-position-x: -80px; }
 }
+.avatar-sprite--celebrando {
+  background-position-y: -400px; /* fila 10: celebrar de frente */
+  animation: spriteCelebrar 0.5s steps(3) forwards;
+}
+
+/* Parado (idle): quieto, de frente. El "deambular" de lado a lado
+   (caminar unos pasos e ir explorando) lo maneja JS activando
+   temporalmente .avatar-sprite--caminando con la fila de dirección
+   correspondiente, así que aquí no hace falta animación. */
 .avatar-sprite--idle {
-  animation: spriteIdle 9s steps(1) infinite;
+  background-position-x: 0px;
+  background-position-y: -80px;
 }
 
 .avatar-nombre {
@@ -359,7 +370,8 @@ button {
    -------------------------------------------------------------------------- */
 
 .avatar-participante--ganador .avatar-sprite {
-  animation: spriteSentarse 0.6s steps(3) forwards, brilloGanador 1.6s ease-in-out infinite;
+  background-position-y: -400px; /* fila 10: celebrar de frente */
+  animation: spriteCelebrar 0.5s steps(3) forwards, brilloGanador 1.6s ease-in-out infinite;
 }
 
 .avatar-participante--ganador::before {

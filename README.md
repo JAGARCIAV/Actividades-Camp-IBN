@@ -134,9 +134,22 @@ es quién.
 ## Personaje animado (sprite) en el mapa
 
 Cada participante aparece en el mapa como un personaje tipo videojuego (no
-un pin con foto): camina cuando le suman puntos, se queda parado (con un
-pequeño "mirar a los lados" ocasional) el resto del tiempo, y se sienta al
-llegar a la meta.
+un pin con foto), con tres comportamientos:
+
+- **Parado / deambulando**: mientras no le cambian los puntos, de vez en
+  cuando (en un momento aleatorio, distinto por persona) camina unos pasos
+  hacia un lado y vuelve a su línea, como si explorara alrededor de su
+  lugar en el camino.
+- **Caminando hacia su nueva posición**: en cuanto le cambian los puntos,
+  vuelve primero a su línea (si estaba deambulando) y después camina de
+  verdad, en cámara lenta, desde donde está hasta su nueva posición sobre
+  el camino — la velocidad es fija: **cada 100 puntos de diferencia son 30
+  segundos caminando** (`MS_POR_CADA_100_PUNTOS` en `js/app.js`).
+- **Celebrando**: al llegar a la meta (`CONFIG.META_PUNTOS`), en vez de
+  quedar parado se queda saltando con los brazos arriba, como festejando.
+  Todos los que ya llegaron se agrupan cerca de la puerta del campamento
+  (no seguían su carril ahí: justo en ese tramo el camino es muy diagonal,
+  y el carril los mandaba fuera de la imagen, hacia el cielo).
 
 - Las hojas de sprites están en `assets/sprites/` — una imagen compacta por
   género y color de participante (`masculino-{color}.png` /
