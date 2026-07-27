@@ -82,6 +82,17 @@ body {
   border-color: var(--verde-500);
 }
 
+/* En iOS/Safari, los <input type="datetime-local"> ignoran el fondo
+   blanco + borde de los demás campos y toman el estilo "de sistema"
+   (relleno gris, sin borde visible) — se veía desordenado al lado del
+   resto del formulario. Se fuerza a que combine con los demás. */
+.campo input[type="datetime-local"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #fff;
+  color: var(--verde-900);
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
