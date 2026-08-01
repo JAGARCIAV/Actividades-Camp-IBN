@@ -902,13 +902,21 @@ async function renderMapa() {
       sprite.classList.remove('avatar-sprite--idle', 'avatar-sprite--celebrando');
       sprite.classList.add('avatar-sprite--caminando');
 
+      // Timer local (NO el Map compartido timersDeambular: guardar acá
+      // el aviso de "ya volvió a su línea, ahora que mire para el otro
+      // lado" dejaba, después de dispararse una vez, una entrada que
+      // nunca se borraba — así terminarCaminata() creía que el
+      // deambular ya estaba activo y se salteaba por completo el
+      // "quedar parado" al llegar, dejando el sprite congelado a mitad
+      // de la animación de caminar).
+      let timerVueltaLinea = null;
       if (duracionVuelta > 0) {
         setDireccion(sprite, derivaActual > 0 ? 'izquierda' : 'derecha');
         contenido.style.transition = `transform ${duracionVuelta}ms ease-in-out`;
         contenido.style.transform = 'translateX(0px)';
-        timersDeambular.set(participante.id, setTimeout(() => {
+        timerVueltaLinea = setTimeout(() => {
           if (document.body.contains(contenido)) setDireccion(sprite, cambioPuntos > 0 ? 'arriba' : 'abajo');
-        }, duracionVuelta));
+        }, duracionVuelta);
       } else {
         // Si sube de puntos va hacia el campamento (de espaldas, como
         // corresponde a avanzar); si baja, va hacia el inicio (de frente).
@@ -932,6 +940,7 @@ async function renderMapa() {
       const finalizar = () => {
         if (yaTermino) return;
         yaTermino = true;
+        clearTimeout(timerVueltaLinea);
         el.removeEventListener('transitionend', alTerminarTransicion);
         listenersCaminata.delete(participante.id);
         clearTimeout(timersCaminata.get(participante.id));
