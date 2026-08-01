@@ -648,12 +648,17 @@ button {
      puede ser una celda más en vez de una franja de ancho completo). */
   .contenido-principal {
     display: grid;
-    grid-template-columns: minmax(400px, 1fr) 420px;
+    grid-template-columns: minmax(420px, 680px) minmax(400px, 520px);
     grid-template-rows: auto 1fr;
     grid-template-areas:
       "mapa   header"
       "mapa   ranking";
-    gap: 28px;
+    /* Con columnas de ancho acotado (no 1fr), el par no llena solo el
+       ancho del contenedor: justify-content:center es lo que las centra
+       a las DOS juntas en pantallas anchas, en vez de quedar pegadas a
+       la izquierda con todo el resto del espacio suelto a la derecha. */
+    justify-content: center;
+    gap: 32px;
     max-width: 1400px;
     margin: 0 auto;
     align-items: start;
