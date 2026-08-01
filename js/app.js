@@ -24,6 +24,11 @@
  * punta. El último (CAMPAMENTO) es la excepción a propósito: en vez de
  * quedar al pie de la carpa, apunta a la tarima de madera de arriba,
  * que es donde tienen que terminar parados quienes llegan a la meta.
+ * Ojo: como la etiqueta (nombre+puntos) va DEBAJO del personaje dentro
+ * de .avatar-contenido y todo el bloque se ancla por su borde inferior
+ * (ver "translate(-50%, -100%)" en .avatar-participante), los pies
+ * quedan visualmente más arriba que este y%: hay que dejar ese margen
+ * de más hacia abajo, si no el personaje "flota" sobre la baranda.
  *
  * Si en el futuro se reemplaza mapa.png por otra imagen con un camino
  * distinto, solo hay que editar estos puntos.
@@ -48,7 +53,7 @@ const PATH_POINTS = [
   { x: 58.8, y: 39.1 },
   { x: 46.5, y: 36.6 },
   { x: 41.3, y: 33.0 },
-  { x: 50.0, y: 19.0 }, // CAMPAMENTO: arriba, sobre la tarima de madera (no al pie, junto a la carpa)
+  { x: 50.0, y: 22.0 }, // CAMPAMENTO: sobre la tabla de piso de la tarima (no en la baranda ni al pie, junto a la carpa)
 ];
 
 /** Puntos necesarios para llegar completamente al campamento (100% del camino). */
