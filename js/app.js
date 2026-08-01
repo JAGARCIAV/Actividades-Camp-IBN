@@ -18,10 +18,12 @@
  * Como están en porcentaje, funcionan en cualquier tamaño de pantalla
  * sin tocar la imagen ni recalcular nada a mano.
  *
- * Estos 18 puntos se extrajeron analizando los píxeles de la propia
- * imagen (detectando el color del camino y trazando su línea central),
- * no a ojo, así que siguen la curva real de punta a punta: desde el
- * cartel INICIO hasta la entrada de la carpa en CAMPAMENTO.
+ * La mayoría de estos 18 puntos se extrajeron analizando los píxeles
+ * de la propia imagen (detectando el color del camino y trazando su
+ * línea central), no a ojo, así que siguen la curva real de punta a
+ * punta. El último (CAMPAMENTO) es la excepción a propósito: en vez de
+ * quedar al pie de la carpa, apunta a la tarima de madera de arriba,
+ * que es donde tienen que terminar parados quienes llegan a la meta.
  *
  * Si en el futuro se reemplaza mapa.png por otra imagen con un camino
  * distinto, solo hay que editar estos puntos.
@@ -46,7 +48,7 @@ const PATH_POINTS = [
   { x: 58.8, y: 39.1 },
   { x: 46.5, y: 36.6 },
   { x: 41.3, y: 33.0 },
-  { x: 53.1, y: 30.1 }, // CAMPAMENTO
+  { x: 50.0, y: 19.0 }, // CAMPAMENTO: arriba, sobre la tarima de madera (no al pie, junto a la carpa)
 ];
 
 /** Puntos necesarios para llegar completamente al campamento (100% del camino). */
@@ -309,22 +311,22 @@ const MARGEN_BORDE_PX = 23;
  *   puntaje casi idéntico); sirve para el parpadeo, igual que antes.
  */
 function calcularPosicionesPorLane(participantes) {
-  // Punto exacto de la puerta del campamento (el último de PATH_POINTS).
-  const puertaCampamento = puntoAPixeles(PATH_POINTS[PATH_POINTS.length - 1]);
+  // Punto exacto de la tarima del campamento (el último de PATH_POINTS).
+  const tarimaCampamento = puntoAPixeles(PATH_POINTS[PATH_POINTS.length - 1]);
 
   const base = participantes.map((participante) => {
-    // Quienes ya llegaron a la meta se agrupan cerca de la puerta del
-    // campamento, celebrando juntos. NO se les aplica el desplazamiento
-    // de carril: justo en ese último tramo el camino es bastante
-    // diagonal, y el carril (pensado para ir "al lado del camino")
-    // los terminaba empujando fuera de la imagen, hacia el cielo.
+    // Quienes ya llegaron a la meta se agrupan sobre la tarima,
+    // celebrando juntos. NO se les aplica el desplazamiento de carril:
+    // justo en ese último tramo el camino es bastante diagonal, y el
+    // carril (pensado para ir "al lado del camino") los terminaba
+    // empujando fuera de la imagen, hacia el cielo.
     if (participante.puntos >= CONFIG.META_PUNTOS) {
       const angulo = (hashTexto(participante.id) % 360) * (Math.PI / 180);
       const distancia = 10 + (hashTexto(participante.id + 'd') % 14);
       return {
         participante,
-        x: puertaCampamento.x + Math.cos(angulo) * distancia,
-        y: puertaCampamento.y + Math.sin(angulo) * distancia,
+        x: tarimaCampamento.x + Math.cos(angulo) * distancia,
+        y: tarimaCampamento.y + Math.sin(angulo) * distancia,
         perpX: 1,
         perpY: 0,
       };
