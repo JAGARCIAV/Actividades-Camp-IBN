@@ -9,29 +9,34 @@
 </head>
 <body>
 
-  <!-- ===================== HEADER ===================== -->
-  <header class="app-header">
-    <div class="app-header__top">
-      <div class="logo-wrap">
-        <div class="logo-badge">🏕️</div>
-        <img id="logoImg" class="logo-img" alt="Logo del campamento" />
-      </div>
-      <div>
-        <h1 class="app-title">ACTIVIDADES CAMP 2027</h1>
-        <p class="app-subtitle">Camino al campamento</p>
-      </div>
-    </div>
-
-    <!-- Puede haber una o varias actividades activas a la vez; app.js
-         agrega una .actividad-card por cada una dentro de este contenedor. -->
-    <div class="actividades-contenedor" id="actividadesContenedor">
-      <div class="actividad-card">
-        <span class="actividad-card__nombre">Cargando...</span>
-      </div>
-    </div>
-  </header>
-
   <div class="contenido-principal">
+    <!-- ===================== HEADER ===================== -->
+    <!-- En escritorio pasa a formar parte de la columna derecha (arriba
+         del ranking, como si fuera la pantalla de un celular); en
+         celular sigue siendo la franja verde de siempre, pegada arriba
+         de todo. Por eso vive dentro de .contenido-principal: así puede
+         ser un elemento más del grid de escritorio. -->
+    <header class="app-header">
+      <div class="app-header__top">
+        <div class="logo-wrap">
+          <div class="logo-badge">🏕️</div>
+          <img id="logoImg" class="logo-img" alt="Logo del campamento" />
+        </div>
+        <div>
+          <h1 class="app-title">ACTIVIDADES CAMP 2027</h1>
+          <p class="app-subtitle">Camino al campamento</p>
+        </div>
+      </div>
+
+      <!-- Puede haber una o varias actividades activas a la vez; app.js
+           agrega una .actividad-card por cada una dentro de este contenedor. -->
+      <div class="actividades-contenedor" id="actividadesContenedor">
+        <div class="actividad-card">
+          <span class="actividad-card__nombre">Cargando...</span>
+        </div>
+      </div>
+    </header>
+
     <!-- ===================== MAPA ===================== -->
     <section class="mapa-section" aria-label="Mapa de progreso">
       <div class="mapa-wrapper" id="mapaWrapper">

@@ -641,26 +641,58 @@ button {
    -------------------------------------------------------------------------- */
 
 @media (min-width: 1024px) {
+  /* El mapa ocupa toda la columna izquierda (grande, de arriba abajo).
+     La columna derecha es angosta, como el ancho de un celular, y
+     apila el encabezado verde + el ranking, igual que en la versión
+     móvil (por eso el header pasó a vivir dentro de este grid: así
+     puede ser una celda más en vez de una franja de ancho completo). */
   .contenido-principal {
     display: grid;
-    grid-template-columns: minmax(380px, 460px) 1fr;
+    grid-template-columns: minmax(400px, 1fr) 420px;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "mapa   header"
+      "mapa   ranking";
     gap: 28px;
-    max-width: 1180px;
+    max-width: 1400px;
     margin: 0 auto;
     align-items: start;
-    padding: 0 24px;
+    padding: 24px 24px 0;
+  }
+
+  .app-header {
+    grid-area: header;
+    position: sticky;
+    top: 24px;
+    border-radius: var(--radio-xl);
   }
 
   .mapa-section {
-    padding: 28px 0 0;
+    grid-area: mapa;
+    padding: 0;
+    /* Se queda pegado al hacer scroll para que el mapa se vea siempre
+       completo mientras se recorre el ranking al lado. */
+    position: sticky;
+    top: 24px;
+    align-self: start;
   }
 
   .mapa-wrapper {
     max-width: 100%;
+    /* El mapa es una imagen angosta y muy alta: en vez de forzarla a
+       ocupar todo el ancho de la columna (lo que la hace larguísima y
+       obliga a hacer scroll para verla completa), se limita también
+       por el alto disponible en pantalla, para que entre completa de
+       una — ahora usando casi toda la altura, porque el header ya no
+       le quita espacio arriba. El 0.4625 es la proporción ancho/alto
+       real de assets/mapa.jpeg. */
+    width: min(100%, calc((100vh - 48px) * 0.4625));
+    margin: 0 auto;
   }
 
   .ranking-section {
-    padding: 28px 0 40px;
+    grid-area: ranking;
+    padding: 0 0 40px;
     max-width: 100%;
   }
 }
