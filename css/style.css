@@ -648,23 +648,24 @@ button {
      puede ser una celda más en vez de una franja de ancho completo). */
   .contenido-principal {
     display: grid;
-    /* La columna del mapa es "auto": se ajusta justo al ancho real de
-       la imagen (que ya está limitado por el alto de pantalla), sin
-       dejar aire de sobra alrededor. Así la columna derecha puede
-       arrimarse bien a la izquierda en vez de quedar lejos con un
-       hueco enorme en el medio. La derecha queda bien ancha (casi
-       tanto como el mapa). */
-    grid-template-columns: auto minmax(460px, 620px);
+    /* El ancho de la columna del mapa se calcula ACÁ directo (no se
+       deja que el navegador lo "adivine" a partir del contenido: eso
+       es justo lo que venía fallando y dejaba un hueco enorme entre
+       el mapa y el panel verde). Es la misma cuenta de siempre (alto
+       disponible × 0.4625, la proporción real de assets/mapa.jpeg),
+       pero puesta en la propia definición de la columna. */
+    grid-template-columns:
+      min(720px, calc((100vh - 32px) * 0.4625))
+      minmax(560px, 720px);
     grid-template-rows: auto 1fr;
     grid-template-areas:
       "mapa   header"
       "mapa   ranking";
-    /* Centra el par de columnas (ya acotadas, no 1fr) dentro del
-       contenedor en pantallas anchas, en vez de quedar todo pegado a
-       la izquierda con el resto del espacio suelto a la derecha. */
+    /* Centra el par de columnas dentro del contenedor en pantallas
+       anchas, en vez de quedar todo pegado a un lado. */
     justify-content: center;
     gap: 28px;
-    max-width: 1400px;
+    max-width: 1500px;
     margin: 0 auto;
     align-items: start;
     padding: 24px 24px 0;
@@ -688,15 +689,10 @@ button {
   }
 
   .mapa-wrapper {
+    /* El ancho ya lo definió la columna de arriba: acá solo hay que
+       ocuparla entera (sin dejar aire de sobra alrededor). */
+    width: 100%;
     max-width: 100%;
-    /* El mapa es una imagen angosta y muy alta: en vez de forzarla a
-       ocupar todo el ancho de la columna (lo que la hace larguísima y
-       obliga a hacer scroll para verla completa), se limita también
-       por el alto disponible en pantalla, para que entre completa de
-       una — ahora usando casi toda la altura, porque el header ya no
-       le quita espacio arriba. El 0.4625 es la proporción ancho/alto
-       real de assets/mapa.jpeg. */
-    width: min(100%, calc((100vh - 48px) * 0.4625));
     margin: 0 auto;
   }
 
@@ -704,5 +700,25 @@ button {
     grid-area: ranking;
     padding: 0 0 40px;
     max-width: 100%;
+  }
+
+  /* Tarjetas del ranking un poco más grandes en escritorio (más ancho
+     ya lo dan solas al ocupar toda la columna derecha, más ancha). */
+  .ranking-item {
+    padding: 14px 20px;
+    gap: 16px;
+  }
+
+  .ranking-foto-wrap {
+    width: 52px;
+    height: 52px;
+  }
+
+  .ranking-nombre {
+    font-size: 1.05rem;
+  }
+
+  .ranking-puntos {
+    font-size: 1.05rem;
   }
 }
