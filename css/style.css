@@ -648,17 +648,22 @@ button {
      puede ser una celda más en vez de una franja de ancho completo). */
   .contenido-principal {
     display: grid;
-    grid-template-columns: minmax(420px, 680px) minmax(400px, 520px);
+    /* La columna del mapa es "auto": se ajusta justo al ancho real de
+       la imagen (que ya está limitado por el alto de pantalla), sin
+       dejar aire de sobra alrededor. Así la columna derecha puede
+       arrimarse bien a la izquierda en vez de quedar lejos con un
+       hueco enorme en el medio. La derecha queda bien ancha (casi
+       tanto como el mapa). */
+    grid-template-columns: auto minmax(460px, 620px);
     grid-template-rows: auto 1fr;
     grid-template-areas:
       "mapa   header"
       "mapa   ranking";
-    /* Con columnas de ancho acotado (no 1fr), el par no llena solo el
-       ancho del contenedor: justify-content:center es lo que las centra
-       a las DOS juntas en pantallas anchas, en vez de quedar pegadas a
-       la izquierda con todo el resto del espacio suelto a la derecha. */
+    /* Centra el par de columnas (ya acotadas, no 1fr) dentro del
+       contenedor en pantallas anchas, en vez de quedar todo pegado a
+       la izquierda con el resto del espacio suelto a la derecha. */
     justify-content: center;
-    gap: 32px;
+    gap: 28px;
     max-width: 1400px;
     margin: 0 auto;
     align-items: start;
