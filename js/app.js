@@ -435,19 +435,17 @@ let actividadesCache = [];
  * una dentro de #actividadesContenedor.
  */
 async function renderActividades() {
-  const actividades = await DataService.getActividades();
+  const todas = await DataService.getActividades();
+  const ahora = new Date();
+  // Las actividades ya finalizadas (fin en el pasado) no se muestran en
+  // la pantalla pública: desaparecen solas al llegar su hora límite.
+  const actividades = todas.filter((a) => !a.fin || new Date(a.fin) >= ahora);
   actividadesCache = actividades;
   const contenedor = document.getElementById('actividadesContenedor');
   contenedor.innerHTML = '';
 
   if (actividades.length === 0) {
-    const card = document.createElement('div');
-    card.className = 'actividad-card';
-    const nombre = document.createElement('span');
-    nombre.className = 'actividad-card__nombre';
-    nombre.textContent = 'No hay actividades por ahora';
-    card.appendChild(nombre);
-    contenedor.appendChild(card);
+    actualizarEstadoVacioActividades();
     return;
   }
 
@@ -501,10 +499,27 @@ function formatearDuracion(ms) {
   return partes.join(' ');
 }
 
+/** Si ya no queda ninguna tarjeta de actividad real, muestra el aviso de "no hay actividades". */
+function actualizarEstadoVacioActividades() {
+  const contenedor = document.getElementById('actividadesContenedor');
+  if (contenedor.querySelector('.actividad-card[data-id]')) return;
+  if (contenedor.querySelector('.actividad-card--vacia')) return;
+
+  const card = document.createElement('div');
+  card.className = 'actividad-card actividad-card--vacia';
+  const nombre = document.createElement('span');
+  nombre.className = 'actividad-card__nombre';
+  nombre.textContent = 'No hay actividades por ahora';
+  card.appendChild(nombre);
+  contenedor.appendChild(card);
+}
+
 /**
  * Muestra el cronómetro de CADA actividad (si tiene inicio y/o fin
  * configurados desde el admin). Se llama una vez por segundo para que
- * la cuenta regresiva se vea en vivo.
+ * la cuenta regresiva se vea en vivo. En cuanto una actividad cumple
+ * su fecha/hora de fin, su tarjeta desaparece sola de la pantalla
+ * pública (no hace falta recargar ni que el admin haga nada más).
  */
 function actualizarCronometros() {
   actividadesCache.forEach((actividad) => {
@@ -512,22 +527,26 @@ function actualizarCronometros() {
     if (!card) return;
     const el = card.querySelector('.actividad-card__cronometro');
 
-    if (!actividad.inicio && !actividad.fin) {
-      el.style.display = 'none';
-      return;
-    }
-
     const ahora = new Date();
     const inicio = actividad.inicio ? new Date(actividad.inicio) : null;
     const fin = actividad.fin ? new Date(actividad.fin) : null;
+
+    if (fin && ahora > fin) {
+      card.remove();
+      actualizarEstadoVacioActividades();
+      return;
+    }
+
+    if (!inicio && !fin) {
+      el.style.display = 'none';
+      return;
+    }
 
     el.style.display = 'inline-flex';
     if (inicio && ahora < inicio) {
       el.textContent = `⏳ Empieza en ${formatearDuracion(inicio - ahora)}`;
     } else if (fin && ahora <= fin) {
       el.textContent = `⏳ Termina en ${formatearDuracion(fin - ahora)}`;
-    } else if (fin && ahora > fin) {
-      el.textContent = '🔒 Actividad finalizada';
     } else {
       el.style.display = 'none';
     }

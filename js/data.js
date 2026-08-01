@@ -52,6 +52,8 @@ const db = getFirestore(firebaseApp);
 
 const PARTICIPANTES_COL = 'participantes';
 const ACTIVIDADES_COL = 'actividades';
+const META_COL = 'meta';
+const META_DOC = 'estado';
 const SEED_URL = 'data/participantes.json';
 
 // Carriles (lanes) fijos para ubicar a los participantes sobre el mapa
@@ -110,24 +112,43 @@ function normalizarActividad(id, data) {
 }
 
 /**
- * La primera vez que alguien abre la app (base de datos vacía), carga
- * el JSON semilla hacia Firestore. Si existía la actividad única de
- * una versión anterior (documento "config/actividad"), la migra como
- * la primera actividad de la nueva colección. Las siguientes veces no
- * hace nada.
+ * La primera vez que se abre la app en la vida (nunca antes hubo datos),
+ * carga el JSON semilla hacia Firestore. Si existía la actividad única
+ * de una versión anterior (documento "config/actividad"), la migra como
+ * la primera actividad de la nueva colección.
+ *
+ * Se controla con una bandera propia ("meta/estado") en vez de mirar si
+ * las colecciones están vacías: si se mirara solo eso, borrar la última
+ * actividad o al último participante dejaría la colección vacía otra
+ * vez y esta función la volvería a rellenar sola con la semilla (bug:
+ * una actividad eliminada "resucitaba" sola). Con la bandera, una vez
+ * inicializado el sistema no vuelve a sembrar nada nunca más.
  */
 async function initSiHaceFalta() {
   if (yaVerificoSemilla) return;
   yaVerificoSemilla = true;
 
-  const actividadesSnap = await getDocs(collection(db, ACTIVIDADES_COL));
-  if (!actividadesSnap.empty) return; // ya hay datos reales, no tocar nada
+  const metaRef = doc(db, META_COL, META_DOC);
+  const metaSnap = await getDoc(metaRef);
+  if (metaSnap.exists() && metaSnap.data().inicializado) return; // ya se sembró antes, no tocar nada
+
+  // Si ya hay datos reales (guardados antes de que existiera esta
+  // bandera), no reemplazar nada: solo marcar como inicializado.
+  const [actividadesSnap, participantesSnap] = await Promise.all([
+    getDocs(collection(db, ACTIVIDADES_COL)),
+    getDocs(collection(db, PARTICIPANTES_COL)),
+  ]);
+  if (!actividadesSnap.empty || !participantesSnap.empty) {
+    await setDoc(metaRef, { inicializado: true });
+    return;
+  }
 
   // Migración desde la versión anterior (una sola actividad guardada
   // en config/actividad), si existiera.
   const viejaSnap = await getDoc(doc(db, 'config', 'actividad'));
   if (viejaSnap.exists()) {
     await setDoc(doc(db, ACTIVIDADES_COL, 'a1'), viejaSnap.data());
+    await setDoc(metaRef, { inicializado: true });
     return;
   }
 
@@ -144,10 +165,11 @@ async function initSiHaceFalta() {
     const { id, ...datos } = a;
     batch.set(doc(db, ACTIVIDADES_COL, id), datos);
   });
-  semilla.participantes.forEach((p) => {
+  (semilla.participantes || []).forEach((p) => {
     const { id, ...datos } = p;
     batch.set(doc(db, PARTICIPANTES_COL, id), datos);
   });
+  batch.set(metaRef, { inicializado: true });
   await batch.commit();
 }
 

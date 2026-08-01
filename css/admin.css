@@ -322,6 +322,9 @@ body {
 .participante-admin-nombre {
   font-weight: 700;
   font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .participante-admin-nombre input {
@@ -337,6 +340,27 @@ body {
 .participante-admin-nombre input:focus {
   outline: none;
   border-bottom-color: var(--verde-500);
+}
+
+.participante-admin-nombre input:disabled {
+  color: var(--verde-900);
+  opacity: 0.75;
+}
+
+.btn-lapiz {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: #eef3f0;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.btn-lapiz--activo {
+  background: var(--acento-oro);
 }
 
 .participante-admin-acciones {
@@ -375,6 +399,29 @@ body {
   color: var(--verde-900);
 }
 
+.puntos-valor {
+  cursor: pointer;
+  border-radius: var(--radio-sm);
+  padding: 2px 4px;
+}
+
+.puntos-valor:hover,
+.puntos-valor:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.puntos-input-manual {
+  width: 64px;
+  text-align: center;
+  font-weight: 800;
+  color: var(--verde-900);
+  border: 2px solid var(--verde-500);
+  border-radius: var(--radio-sm);
+  padding: 2px 4px;
+  background: #fff;
+}
+
 .badge-estado {
   font-size: 0.78rem;
   font-weight: 700;
@@ -411,6 +458,12 @@ body {
   border: 2px solid #e0e8e3;
   background: #fff;
   color: var(--verde-900);
+}
+
+.select-genero:disabled,
+.input-foto:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .lista-vacia-admin {

@@ -70,11 +70,16 @@ let cancelarSuscripcion = null;
  */
 function hayEdicionEnCurso() {
   const activo = document.activeElement;
-  return Boolean(
+  const enfocandoInput = Boolean(
     activo &&
       activo.tagName === 'INPUT' &&
       (activo.closest('#listaParticipantesAdmin') || activo.closest('#listaActividadesAdmin'))
   );
+  // También cuenta como "en curso" si algún participante quedó con el
+  // lápiz activo (nombre/foto/género habilitados a la espera de
+  // "Aplicar cambios"), aunque en ese instante no haya foco en un input.
+  const editandoDatosParticipante = Boolean(document.querySelector('.btn-lapiz--activo'));
+  return enfocandoInput || editandoDatosParticipante;
 }
 
 async function refrescarSiNoHayEdicion() {
@@ -411,25 +416,26 @@ async function renderParticipantes() {
 
       const nombreDiv = document.createElement('div');
       nombreDiv.className = 'participante-admin-nombre';
-      const inputNombreEl = document.createElement('input');
-      inputNombreEl.type = 'text';
-      inputNombreEl.value = participante.nombre;
-      inputNombreEl.setAttribute('aria-label', 'Nombre');
-      nombreDiv.appendChild(inputNombreEl);
+      nombreDiv.innerHTML = `
+        <input type="text" aria-label="Nombre" disabled />
+        <button type="button" class="btn-lapiz" data-accion="editar-datos" title="Editar nombre, foto y género">✏️</button>
+      `;
+      nombreDiv.querySelector('input').value = participante.nombre;
 
       const acciones = document.createElement('div');
       acciones.className = 'participante-admin-acciones';
       acciones.innerHTML = `
         <div class="puntos-control">
-          <button type="button" data-accion="restar" title="Restar 5 puntos">−</button>
-          <span>${participante.puntos} pts</span>
-          <button type="button" data-accion="sumar" title="Sumar 5 puntos">+</button>
+          <button type="button" data-accion="restar" title="Restar 100 puntos">−</button>
+          <span class="puntos-valor" data-accion="editar-puntos" title="Click para escribir los puntos" tabindex="0">${participante.puntos} pts</span>
+          <button type="button" data-accion="sumar" title="Sumar 100 puntos">+</button>
         </div>
-        <select class="select-genero" title="Género">
+        <select class="select-genero" title="Género" disabled>
           <option value="masculino">Hombre</option>
           <option value="femenino">Mujer</option>
         </select>
-        <input type="file" class="input-foto" accept="image/*" title="Cambiar foto" />
+        <input type="file" class="input-foto" accept="image/*" title="Cambiar foto" disabled />
+        <button type="button" class="btn btn-primario btn-sm oculto" data-accion="aplicar-cambios">Aplicar cambios</button>
         <button type="button" class="btn btn-peligro btn-sm" data-accion="eliminar">Eliminar</button>
       `;
       acciones.querySelector('.select-genero').value = participante.genero === 'femenino' ? 'femenino' : 'masculino';
@@ -441,24 +447,112 @@ async function renderParticipantes() {
       lista.appendChild(li);
 
       // --- eventos de esta fila ---
-      const inputNombre = nombreDiv.querySelector('input');
-      inputNombre.addEventListener('change', async () => {
-        const nuevoNombre = inputNombre.value.trim();
-        if (nuevoNombre) await DataService.updateParticipante(participante.id, { nombre: nuevoNombre });
-      });
 
-      acciones.querySelector('.select-genero').addEventListener('change', async (e) => {
-        await DataService.updateParticipante(participante.id, { genero: e.target.value });
-        await renderParticipantes();
-      });
-
+      // Puntos: sumar/restar de 100 en 100, o hacer click en el número
+      // para escribir directamente la cantidad que se quiera.
       acciones.querySelector('[data-accion="sumar"]').addEventListener('click', async () => {
-        await DataService.addPuntos(participante.id, 5);
+        await DataService.addPuntos(participante.id, 100);
         await renderParticipantes();
       });
 
       acciones.querySelector('[data-accion="restar"]').addEventListener('click', async () => {
-        await DataService.addPuntos(participante.id, -5);
+        await DataService.addPuntos(participante.id, -100);
+        await renderParticipantes();
+      });
+
+      const spanPuntos = acciones.querySelector('.puntos-valor');
+      function activarEdicionPuntos() {
+        const inputPuntos = document.createElement('input');
+        inputPuntos.type = 'number';
+        inputPuntos.min = '0';
+        inputPuntos.className = 'puntos-input-manual';
+        inputPuntos.value = participante.puntos;
+        spanPuntos.replaceWith(inputPuntos);
+        inputPuntos.focus();
+        inputPuntos.select();
+
+        let confirmado = false;
+        const confirmar = async () => {
+          if (confirmado) return;
+          confirmado = true;
+          const nuevo = Math.max(0, parseInt(inputPuntos.value, 10) || 0);
+          await DataService.updateParticipante(participante.id, { puntos: nuevo });
+          await renderParticipantes();
+        };
+        inputPuntos.addEventListener('blur', confirmar);
+        inputPuntos.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            inputPuntos.blur();
+          } else if (e.key === 'Escape') {
+            confirmado = true;
+            renderParticipantes();
+          }
+        });
+      }
+      spanPuntos.addEventListener('click', activarEdicionPuntos);
+      spanPuntos.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          activarEdicionPuntos();
+        }
+      });
+
+      // Nombre, foto y género: bloqueados hasta que se haga click en el
+      // lápiz. Ahí se habilitan para editar y aparece "Aplicar cambios",
+      // que guarda y vuelve a bloquear todo.
+      const inputNombre = nombreDiv.querySelector('input');
+      const btnLapiz = nombreDiv.querySelector('[data-accion="editar-datos"]');
+      const selectGenero = acciones.querySelector('.select-genero');
+      const inputFoto = acciones.querySelector('.input-foto');
+      const btnAplicar = acciones.querySelector('[data-accion="aplicar-cambios"]');
+
+      function activarEdicionDatos() {
+        inputNombre.disabled = false;
+        selectGenero.disabled = false;
+        inputFoto.disabled = false;
+        btnAplicar.classList.remove('oculto');
+        btnLapiz.classList.add('btn-lapiz--activo');
+        inputNombre.focus();
+      }
+
+      function desactivarEdicionDatos() {
+        inputNombre.disabled = true;
+        selectGenero.disabled = true;
+        inputFoto.disabled = true;
+        btnAplicar.classList.add('oculto');
+        btnLapiz.classList.remove('btn-lapiz--activo');
+      }
+
+      btnLapiz.addEventListener('click', () => {
+        if (inputNombre.disabled) {
+          activarEdicionDatos();
+        } else {
+          // Cancelar: descarta lo escrito y vuelve a bloquear.
+          inputNombre.value = participante.nombre;
+          selectGenero.value = participante.genero === 'femenino' ? 'femenino' : 'masculino';
+          inputFoto.value = '';
+          desactivarEdicionDatos();
+        }
+      });
+
+      btnAplicar.addEventListener('click', async () => {
+        const nuevoNombre = inputNombre.value.trim();
+        const archivo = inputFoto.files[0];
+        const cambios = {};
+        if (nuevoNombre && nuevoNombre !== participante.nombre) cambios.nombre = nuevoNombre;
+        if (selectGenero.value !== participante.genero) cambios.genero = selectGenero.value;
+        if (archivo) cambios.foto = await leerFotoComoDataURL(archivo);
+
+        if (Object.keys(cambios).length > 0) {
+          try {
+            await DataService.updateParticipante(participante.id, cambios);
+          } catch (err) {
+            alert('No se pudo guardar. Intenta con otra foto (más liviana) o sin foto.');
+            return;
+          }
+        }
+        desactivarEdicionDatos();
         await renderParticipantes();
       });
 
@@ -467,19 +561,6 @@ async function renderParticipantes() {
         if (!ok) return;
         await DataService.deleteParticipante(participante.id);
         await renderParticipantes();
-      });
-
-      acciones.querySelector('.input-foto').addEventListener('change', async (e) => {
-        const archivo = e.target.files[0];
-        const foto = await leerFotoComoDataURL(archivo);
-        if (foto) {
-          try {
-            await DataService.updateParticipante(participante.id, { foto });
-            await renderParticipantes();
-          } catch (err) {
-            alert('No se pudo guardar la foto. Intenta con otra imagen.');
-          }
-        }
       });
     });
 }
