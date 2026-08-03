@@ -381,8 +381,20 @@ button {
   from { background-position-x: 0px; }
   to { background-position-x: -280px; }
 }
+
+/* Las fotos de origen de esta skin casi no cambian la posición de las
+   piernas entre cuadro y cuadro (ver assets/sprites/originales/): sin este
+   rebote, al desplazarse el personaje parece "deslizar" en vez de caminar.
+   Este pequeño vaivén vertical (2px) es puro maquillaje del sprite actual,
+   sincronizado a la mitad de la duración del ciclo de cuadros (2 rebotes
+   por vuelta, simulando el apoyo de cada pie); no reemplaza tener cuadros
+   con una zancada real. */
+@keyframes spriteRebotarNinja {
+  from { transform: translateY(0); }
+  to { transform: translateY(-2px); }
+}
 .avatar-sprite--skin-ninja.avatar-sprite--caminando {
-  animation: spriteCaminarNinja 0.8s steps(7) infinite;
+  animation: spriteCaminarNinja 0.8s steps(7) infinite, spriteRebotarNinja 0.4s ease-in-out infinite alternate;
 }
 
 /* Celebrar/sentado: sin cuadros propios, se quedan en el idle (ver arriba
