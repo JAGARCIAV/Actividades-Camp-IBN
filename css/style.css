@@ -405,9 +405,10 @@ button {
   background-position-x: 0px;
 }
 
-/* Buscador: quirk que JS dispara de vez en cuando durante el idle (mirar
-   alrededor / cubrirse los ojos). No es infinita: hace 2 vueltas y JS le
-   saca la clase para volver al idle normal. */
+/* Buscador: quirk que JS dispara durante el idle (mirar alrededor /
+   cubrirse los ojos), para que la skin ninja nunca se quede parada sin
+   hacer nada. No es infinita: hace 2 vueltas y JS le saca la clase para
+   volver al idle normal. */
 @keyframes spriteBuscarNinja {
   from { background-position-x: 0px; }
   to { background-position-x: -280px; }

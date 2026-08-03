@@ -711,11 +711,11 @@ function iniciarDeambular(participante, contenido, sprite) {
         setDireccion(sprite, 'abajo');
         const espera = 2500 + Math.random() * 4500;
 
-        // Quirk exclusivo de la skin "ninja": de vez en cuando, en vez de
-        // quedarse solo parado esperando, hace la animación de "buscador"
+        // Quirk exclusivo de la skin "ninja": en vez de quedarse solo
+        // parado esperando, siempre hace la animación de "buscador"
         // (fila 4 de assets/sprites/masculino-ninja.png) un rato y recién
         // ahí sigue con el siguiente paso del deambular.
-        if (esSkinNinja(participante) && Math.random() < 0.35) {
+        if (esSkinNinja(participante)) {
           const DURACION_BUSCANDO = 2200; // 1.1s x 2 vueltas, ver spriteBuscarNinja en css/style.css
           timersDeambular.set(participanteId, setTimeout(() => {
             if (!document.body.contains(contenido)) return;
