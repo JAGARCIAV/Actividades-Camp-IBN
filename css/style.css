@@ -368,14 +368,18 @@ button {
  *   fila 2 = caminar abajo
  * No tiene filas de celebrar/sentado propias: si a este personaje le toca
  * festejar o sentarse, usa el cuadro de parado (idle) como respaldo.
+ *
+ * OJO: el mapeo de clases de dirección de abajo NO es 1 a 1 con la lista
+ * de arriba a propósito: avatar-sprite--dir-derecha usa la fila 1 y
+ * avatar-sprite--dir-izquierda usa la fila 3 (invertido a pedido).
  */
 .avatar-sprite--skin-ninja {
   background-size: 280px 200px; /* 7 columnas x 40px, 5 filas x 40px */
 }
 .avatar-sprite--skin-ninja.avatar-sprite--dir-arriba { background-position-y: 0px; }
-.avatar-sprite--skin-ninja.avatar-sprite--dir-izquierda { background-position-y: -40px; }
+.avatar-sprite--skin-ninja.avatar-sprite--dir-izquierda { background-position-y: -120px; }
 .avatar-sprite--skin-ninja.avatar-sprite--dir-abajo { background-position-y: -80px; }
-.avatar-sprite--skin-ninja.avatar-sprite--dir-derecha { background-position-y: -120px; }
+.avatar-sprite--skin-ninja.avatar-sprite--dir-derecha { background-position-y: -40px; }
 
 @keyframes spriteCaminarNinja {
   from { background-position-x: 0px; }
