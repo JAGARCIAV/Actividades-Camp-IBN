@@ -185,9 +185,9 @@ function dibujarLineasCarriles() {
   for (let lane = 1; lane <= LANE_COUNT; lane++) {
     const puntos = [];
     for (let i = 0; i <= MUESTRAS; i++) {
-      const { x, y, tx, ty } = puntoYTangenteEnCamino(i / MUESTRAS);
+      const { x, y } = puntoYTangenteEnCamino(i / MUESTRAS);
       const offset = offsetDeLane(lane);
-      puntos.push(`${(x - ty * offset).toFixed(1)},${(y + tx * offset).toFixed(1)}`);
+      puntos.push(`${(x + offset).toFixed(1)},${y.toFixed(1)}`);
     }
     const linea = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
     linea.setAttribute('points', puntos.join(' '));
@@ -338,9 +338,18 @@ function calcularPosicionesPorLane(participantes) {
     }
 
     const progreso = participante.puntos / CONFIG.META_PUNTOS;
-    const { x, y, tx, ty } = puntoYTangenteEnCamino(progreso);
-    const perpX = -ty;
-    const perpY = tx;
+    const { x, y } = puntoYTangenteEnCamino(progreso);
+    // El desplazamiento de carril es SIEMPRE horizontal puro en pantalla
+    // (nunca perpendicular a la curva del camino): si fuera perpendicular,
+    // en los tramos donde el camino va bastante horizontal esa perpendicular
+    // termina siendo casi vertical, y un participante en un carril "de
+    // afuera" puede quedar empujado por encima de alguien con más puntos
+    // sin que tenga que ver con el progreso real. Con el carril solo en X,
+    // el orden vertical queda determinado únicamente por los puntos: mismo
+    // puntaje = mismo nivel (mismo Y), puntaje distinto = Y siempre distinto
+    // y en el orden correcto.
+    const perpX = 1;
+    const perpY = 0;
     // Todo participante debería tener carril asignado al crearse; este
     // hash es solo un respaldo por si llegara a faltar el dato.
     const lane = participante.lane || (hashTexto(participante.id) % LANE_COUNT) + 1;
