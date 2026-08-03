@@ -576,7 +576,27 @@ const TIEMPO_PARPADEO_POR_NOMBRE = 1;
 // descargar la versión nueva en vez de usar una copia vieja en caché.
 const SPRITE_VERSION = 2;
 
+// Nombre (normalizado: sin tildes, sin mayúsculas, sin espacios de más) del
+// único participante que usa la skin especial "ninja" en vez del personaje
+// genérico recoloreado. No es una opción del panel de admin: es un
+// personaje fijo para esta persona puntual (ver assets/sprites/masculino-ninja.png).
+const NOMBRE_SKIN_NINJA = 'jose armando garcia vallejos';
+
+function normalizarNombre(texto) {
+  return (texto || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function esSkinNinja(participante) {
+  return normalizarNombre(participante.nombre) === NOMBRE_SKIN_NINJA;
+}
+
 function spriteUrl(participante) {
+  if (esSkinNinja(participante)) return `assets/sprites/masculino-ninja.png?v=${SPRITE_VERSION}`;
   const genero = participante.genero === 'femenino' ? 'femenino' : 'masculino';
   const color = (participante.color || '#4D96FF').replace('#', '').toLowerCase();
   return `assets/sprites/${genero}-${color}.png?v=${SPRITE_VERSION}`;
@@ -681,7 +701,27 @@ function iniciarDeambular(participante, contenido, sprite) {
         if (!document.body.contains(contenido)) return;
         setDireccion(sprite, 'abajo');
         const espera = 2500 + Math.random() * 4500;
-        timersDeambular.set(participanteId, setTimeout(paso, espera));
+
+        // Quirk exclusivo de la skin "ninja": de vez en cuando, en vez de
+        // quedarse solo parado esperando, hace la animación de "buscador"
+        // (fila 4 de assets/sprites/masculino-ninja.png) un rato y recién
+        // ahí sigue con el siguiente paso del deambular.
+        if (esSkinNinja(participante) && Math.random() < 0.35) {
+          const DURACION_BUSCANDO = 2200; // 1.1s x 2 vueltas, ver spriteBuscarNinja en css/style.css
+          timersDeambular.set(participanteId, setTimeout(() => {
+            if (!document.body.contains(contenido)) return;
+            sprite.classList.remove('avatar-sprite--idle');
+            sprite.classList.add('avatar-sprite--buscando');
+            timersDeambular.set(participanteId, setTimeout(() => {
+              if (!document.body.contains(contenido)) return;
+              sprite.classList.remove('avatar-sprite--buscando');
+              sprite.classList.add('avatar-sprite--idle');
+              timersDeambular.set(participanteId, setTimeout(paso, Math.max(0, espera - DURACION_BUSCANDO)));
+            }, DURACION_BUSCANDO));
+          }, 600));
+        } else {
+          timersDeambular.set(participanteId, setTimeout(paso, espera));
+        }
       }, 450 + Math.random() * 350));
     }, 450 + Math.random() * 350));
   }
@@ -832,6 +872,7 @@ async function renderMapa() {
 
       const sprite = document.createElement('div');
       sprite.className = 'avatar-sprite avatar-sprite--idle';
+      sprite.classList.toggle('avatar-sprite--skin-ninja', esSkinNinja(participante));
       sprite.style.backgroundImage = `url(${spriteUrl(participante)})`;
 
       const etiqueta = document.createElement('span');
@@ -853,6 +894,7 @@ async function renderMapa() {
       el.querySelector('.avatar-etiqueta__nombre').textContent = primerNombreYApellido(participante.nombre);
       el.querySelector('.avatar-etiqueta__puntos').textContent = participante.puntos;
       const sprite = el.querySelector('.avatar-sprite');
+      sprite.classList.toggle('avatar-sprite--skin-ninja', esSkinNinja(participante));
       const nuevaUrl = spriteUrl(participante);
       if (!sprite.style.backgroundImage.includes(nuevaUrl)) {
         sprite.style.backgroundImage = `url(${nuevaUrl})`;

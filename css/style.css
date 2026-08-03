@@ -354,6 +354,57 @@ button {
   background-position-x: 0px;
 }
 
+/* --------------------------------------------------------------------------
+   SKIN ÚNICA: "ninja" (assets/sprites/masculino-ninja.png)
+   -------------------------------------------------------------------------- */
+
+/*
+ * A diferencia de la grilla compartida de recoloreo (9 columnas x 12 filas,
+ * arriba), esta es una hoja propia armada a mano a partir de fotos sueltas:
+ * 7 columnas x 5 filas, cuadros de 64x64 ya recortados/centrados al mismo
+ * tamaño y misma línea de piso entre sí (ver assets/sprites/originales/).
+ *   fila 0 = caminar arriba     fila 3 = caminar derecha (espejo de la 1)
+ *   fila 1 = caminar izquierda  fila 4 = buscador (quirk del idle)
+ *   fila 2 = caminar abajo
+ * No tiene filas de celebrar/sentado propias: si a este personaje le toca
+ * festejar o sentarse, usa el cuadro de parado (idle) como respaldo.
+ */
+.avatar-sprite--skin-ninja {
+  background-size: 280px 200px; /* 7 columnas x 40px, 5 filas x 40px */
+}
+.avatar-sprite--skin-ninja.avatar-sprite--dir-arriba { background-position-y: 0px; }
+.avatar-sprite--skin-ninja.avatar-sprite--dir-izquierda { background-position-y: -40px; }
+.avatar-sprite--skin-ninja.avatar-sprite--dir-abajo { background-position-y: -80px; }
+.avatar-sprite--skin-ninja.avatar-sprite--dir-derecha { background-position-y: -120px; }
+
+@keyframes spriteCaminarNinja {
+  from { background-position-x: 0px; }
+  to { background-position-x: -280px; }
+}
+.avatar-sprite--skin-ninja.avatar-sprite--caminando {
+  animation: spriteCaminarNinja 0.8s steps(7) infinite;
+}
+
+/* Celebrar/sentado: sin cuadros propios, se quedan en el idle (ver arriba
+   por qué). Evita que hereden por error la animación de la grilla genérica
+   (9 pasos), que en esta hoja de 7 columnas se vería recortada/entrecortada. */
+.avatar-sprite--skin-ninja.avatar-sprite--celebrando {
+  animation: none;
+  background-position-x: 0px;
+}
+
+/* Buscador: quirk que JS dispara de vez en cuando durante el idle (mirar
+   alrededor / cubrirse los ojos). No es infinita: hace 2 vueltas y JS le
+   saca la clase para volver al idle normal. */
+@keyframes spriteBuscarNinja {
+  from { background-position-x: 0px; }
+  to { background-position-x: -280px; }
+}
+.avatar-sprite--skin-ninja.avatar-sprite--buscando {
+  background-position-y: -160px;
+  animation: spriteBuscarNinja 1.1s steps(7) 2;
+}
+
 /* Una sola pastilla con iniciales + puntos (antes eran dos apiladas:
    se veía pesado para lo chico que es el sprite, sobre todo con varios
    personajes juntos en el camino). */
